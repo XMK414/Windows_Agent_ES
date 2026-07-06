@@ -1,4 +1,10 @@
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS threads (
   id TEXT PRIMARY KEY,
   pane_id TEXT NOT NULL,

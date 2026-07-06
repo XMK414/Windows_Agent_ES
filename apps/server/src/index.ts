@@ -13,6 +13,9 @@ import { registerRoutes } from "./routes/index.js";
 import { registerThreadRoutes } from "./routes/threads.js";
 import { registerLibraryRoutes } from "./routes/library.js";
 import { registerNoteRoutes } from "./routes/notes.js";
+import { registerProjectRoutes } from "./routes/projects.js";
+import { registerArtifactRoutes } from "./routes/artifacts.js";
+import { registerCliRoutes } from "./routes/cli.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -81,6 +84,9 @@ const contextResolver = new ContextResolver(PROJECTS_DIR, libraryIndex);
 registerThreadRoutes(app, { db, providers, contextResolver, auditLog });
 registerLibraryRoutes(app, { library: libraryIndex, auditLog });
 registerNoteRoutes(app, { db, vaultDir: VAULT_DIR, auditLog });
+registerProjectRoutes(app, { db, projectsDir: PROJECTS_DIR, auditLog });
+registerArtifactRoutes(app, { db, projectsDir: PROJECTS_DIR, auditLog });
+registerCliRoutes(app, { projectsDir: PROJECTS_DIR, auditLog });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login
