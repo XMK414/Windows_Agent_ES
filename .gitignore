@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+
+# runtime data — never commit secrets, sessions, or the local DB
+data/
+.env
+.env.*
+*.session.json
+*secrets*
+
+.DS_Store
+Thumbs.db
