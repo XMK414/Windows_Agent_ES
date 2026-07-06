@@ -3,18 +3,26 @@ import cookieParser from "cookie-parser";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { AuditLog } from "./security/audit-log.js";
 import { FileSecretsVault } from "./security/secrets-vault.js";
 import { generateInstallToken, requireAuth, localOnlyCors } from "./security/auth-middleware.js";
 import { openDb } from "./db/index.js";
 import { registerRoutes } from "./routes/index.js";
+import { registerThreadRoutes } from "./routes/threads.js";
+import { buildProviderRegistry } from "./adapters/registry.js";
+import { FileLibraryIndex } from "./library/index.js";
+import { ContextResolver } from "./injection/context-resolver.js";
 
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const DATA_DIR = path.resolve(process.cwd(), "data");
+const PROJECTS_DIR = path.join(DATA_DIR, "projects");
 const WEB_ORIGIN = process.env.WAES_WEB_ORIGIN ?? "http://127.0.0.1:5173";
 const PORT = Number(process.env.WAES_PORT ?? 8787);
 
 mkdirSync(DATA_DIR, { recursive: true });
+mkdirSync(PROJECTS_DIR, { recursive: true });
 
 // The install token is generated once and persisted locally (gitignored) —
 // this is what stands in for "auth" on a single-user local server. See
@@ -62,6 +70,11 @@ app.use(
 );
 
 registerRoutes(app, { db, vault, auditLog, dataDir: DATA_DIR });
+
+const providers = buildProviderRegistry(vault);
+const libraryIndex = new FileLibraryIndex(path.join(REPO_ROOT, "library-templates"));
+const contextResolver = new ContextResolver(PROJECTS_DIR, libraryIndex);
+registerThreadRoutes(app, { db, providers, contextResolver, auditLog });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login
