@@ -11,6 +11,8 @@ import { generateInstallToken, requireAuth, localOnlyCors } from "./security/aut
 import { openDb } from "./db/index.js";
 import { registerRoutes } from "./routes/index.js";
 import { registerThreadRoutes } from "./routes/threads.js";
+import { registerLibraryRoutes } from "./routes/library.js";
+import { registerNoteRoutes } from "./routes/notes.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -18,11 +20,13 @@ import { ContextResolver } from "./injection/context-resolver.js";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const PROJECTS_DIR = path.join(DATA_DIR, "projects");
+const VAULT_DIR = path.join(DATA_DIR, "vault");
 const WEB_ORIGIN = process.env.WAES_WEB_ORIGIN ?? "http://127.0.0.1:5173";
 const PORT = Number(process.env.WAES_PORT ?? 8787);
 
 mkdirSync(DATA_DIR, { recursive: true });
 mkdirSync(PROJECTS_DIR, { recursive: true });
+mkdirSync(VAULT_DIR, { recursive: true });
 
 // The install token is generated once and persisted locally (gitignored) —
 // this is what stands in for "auth" on a single-user local server. See
@@ -75,6 +79,8 @@ const providers = buildProviderRegistry(vault);
 const libraryIndex = new FileLibraryIndex(path.join(REPO_ROOT, "library-templates"));
 const contextResolver = new ContextResolver(PROJECTS_DIR, libraryIndex);
 registerThreadRoutes(app, { db, providers, contextResolver, auditLog });
+registerLibraryRoutes(app, { library: libraryIndex, auditLog });
+registerNoteRoutes(app, { db, vaultDir: VAULT_DIR, auditLog });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login

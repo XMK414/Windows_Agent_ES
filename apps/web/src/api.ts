@@ -54,6 +54,29 @@ export interface InjectionRef {
   ref: string;
 }
 
+export interface LibraryListItem {
+  ref: string;
+  type: string;
+  name: string;
+  tags: string[];
+  owner: "human" | "agent";
+}
+
+export async function listLibrary(query = ""): Promise<LibraryListItem[]> {
+  const res = await request(`/api/library${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+  const data = await res.json();
+  return data.items ?? [];
+}
+
+export async function saveNote(sourcePane: string, excerpt: string, threadId?: string, model?: string) {
+  const res = await request("/api/notes", {
+    method: "POST",
+    body: JSON.stringify({ sourcePane, excerpt, threadId, model, tags: [] }),
+  });
+  if (!res.ok) throw new Error((await res.json()).error ?? "failed to save note");
+  return res.json();
+}
+
 /** Streams SSE-style `event:`/`data:` frames from a POST body via fetch's readable stream. */
 export async function* sendMessage(
   threadId: string,
