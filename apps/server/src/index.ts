@@ -17,6 +17,9 @@ import { registerProjectRoutes } from "./routes/projects.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerCliRoutes } from "./routes/cli.js";
 import { registerBoardRoutes } from "./routes/board.js";
+import { registerGoalRoutes } from "./routes/goals.js";
+import { registerCostRoutes } from "./routes/cost.js";
+import { registerMemoryRoutes } from "./routes/memory.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -89,6 +92,9 @@ registerProjectRoutes(app, { db, projectsDir: PROJECTS_DIR, auditLog });
 registerArtifactRoutes(app, { db, projectsDir: PROJECTS_DIR, auditLog });
 registerCliRoutes(app, { projectsDir: PROJECTS_DIR, auditLog });
 registerBoardRoutes(app, { db, providers, contextResolver, auditLog });
+registerGoalRoutes(app, { db, auditLog });
+registerCostRoutes(app, { db });
+registerMemoryRoutes(app, { vaultDir: VAULT_DIR, projectsDir: PROJECTS_DIR, libraryDir: path.join(REPO_ROOT, "library-templates") });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login
