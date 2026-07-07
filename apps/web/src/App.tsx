@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { setInstallToken, setSecret, getStatus } from "./api";
 import { ChatPane } from "./ChatPane";
+import { StackBuilder } from "./StackBuilder";
+import { BreakTimer } from "./BreakTimer";
+import "./theme.css";
 
 function SettingsBar() {
   const [token, setToken] = useState("");
@@ -44,15 +47,36 @@ function SettingsBar() {
   );
 }
 
-export default function App() {
+function ChatGrid() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 8, padding: 8, minHeight: 600 }}>
+      <ChatPane paneId="claude-1" provider="anthropic-api" label="Claude #1" />
+      <ChatPane paneId="claude-2" provider="anthropic-api" label="Claude #2" />
+      <ChatPane paneId="claude-3" provider="anthropic-api" label="Claude #3" />
+      <ChatPane paneId="gemini-1" provider="google-api" label="Gemini" />
+    </div>
+  );
+}
+
+type Tab = "chat" | "stack" | "breaks";
+
+export default function App() {
+  const [tab, setTab] = useState<Tab>("chat");
+
+  return (
+    <div className="waes-app" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <SettingsBar />
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 8, padding: 8 }}>
-        <ChatPane paneId="claude-1" provider="anthropic-api" label="Claude #1" />
-        <ChatPane paneId="claude-2" provider="anthropic-api" label="Claude #2" />
-        <ChatPane paneId="claude-3" provider="anthropic-api" label="Claude #3" />
-        <ChatPane paneId="gemini-1" provider="google-api" label="Gemini" />
+      <div className="waes-tabs">
+        {(["chat", "stack", "breaks"] as Tab[]).map((t) => (
+          <button key={t} className={`waes-tab${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
+            {t === "chat" ? "Chat" : t === "stack" ? "Stack Builder" : "Break Timer"}
+          </button>
+        ))}
+      </div>
+      <div className="waes-panel" style={{ flex: 1, display: "flex" }}>
+        {tab === "chat" && <ChatGrid />}
+        {tab === "stack" && <StackBuilder />}
+        {tab === "breaks" && <BreakTimer />}
       </div>
     </div>
   );

@@ -110,3 +110,100 @@ export async function* sendMessage(
     }
   }
 }
+
+export interface ToolInput {
+  category: string;
+  name: string;
+  costType: "free" | "freemium" | "subscription" | "one_time" | "usage_based";
+  costAmountCents?: number;
+  costPer?: "project" | "month" | "unit";
+  termsSummary?: string;
+  termsUrl?: string;
+  hosting: "self" | "hosted" | "both";
+  license?: "open_source" | "proprietary";
+  easeOfUse?: number;
+  speed?: number;
+  quality?: number;
+  privacy?: number;
+  vendorLockIn?: number;
+  integrations?: number;
+  support?: number;
+  scalability?: number;
+  notes?: string;
+}
+
+export interface Tool extends ToolInput {
+  id: string;
+}
+
+export async function createTool(input: ToolInput) {
+  const res = await request("/api/tools", { method: "POST", body: JSON.stringify(input) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create tool");
+  return data.id as string;
+}
+
+export async function listTools(category?: string): Promise<Tool[]> {
+  const res = await request(`/api/tools${category ? `?category=${encodeURIComponent(category)}` : ""}`);
+  const data = await res.json();
+  return (data.tools ?? []).map((t: any) => ({
+    id: t.id,
+    category: t.category,
+    name: t.name,
+    costType: t.cost_type,
+    costAmountCents: t.cost_amount_cents,
+    costPer: t.cost_per,
+    termsSummary: t.terms_summary,
+    termsUrl: t.terms_url,
+    hosting: t.hosting,
+    license: t.license,
+    easeOfUse: t.ease_of_use,
+    speed: t.speed,
+    quality: t.quality,
+    privacy: t.privacy,
+    vendorLockIn: t.vendor_lock_in,
+    integrations: t.integrations,
+    support: t.support,
+    scalability: t.scalability,
+    notes: t.notes,
+  }));
+}
+
+export async function listToolCategories(): Promise<string[]> {
+  const res = await request("/api/tools/categories");
+  return (await res.json()).categories ?? [];
+}
+
+export interface StackSummary {
+  id: string;
+  name: string;
+  budgetCents: number | null;
+  budgetPeriod: string | null;
+  items: any[];
+  totals: { monthlyCents: number; oneTimeCents: number };
+  overBudget: boolean;
+}
+
+export async function createStack(name: string, budgetCents: number | null, budgetPeriod: "project" | "month", items: { toolId: string; category: string }[]): Promise<StackSummary> {
+  const res = await request("/api/stacks", { method: "POST", body: JSON.stringify({ name, budgetCents, budgetPeriod, items }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create stack");
+  return data;
+}
+
+export interface BreakSettings {
+  intervalMinutes: number;
+  enabled: boolean;
+  exerciseTypes: string[];
+}
+
+export async function getBreakSettings(): Promise<BreakSettings> {
+  const res = await request("/api/breaks/settings");
+  return res.json();
+}
+
+export async function setBreakSettings(settings: BreakSettings) {
+  const res = await request("/api/breaks/settings", { method: "POST", body: JSON.stringify(settings) });
+  if (!res.ok) throw new Error((await res.json()).error ?? "failed to save break settings");
+  return res.json();
+}

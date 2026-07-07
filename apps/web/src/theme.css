@@ -1,0 +1,191 @@
+/*
+  Futuristic "etched blueprint" design language: dark glass cards with a
+  thin animated light tracing their border, like a glowing trace on a
+  circuit board. Introduced for Stack Builder + Break Timer; other panes
+  keep their current look until a full pass is deliberately scoped.
+*/
+
+:root {
+  --waes-bg: #05070c;
+  --waes-bg-grid: rgba(120, 190, 255, 0.05);
+  --waes-glass: rgba(18, 24, 38, 0.55);
+  --waes-glass-border: rgba(120, 190, 255, 0.18);
+  --waes-accent: #7cd4ff;
+  --waes-accent-soft: rgba(124, 212, 255, 0.35);
+  --waes-text: #e8f2ff;
+  --waes-text-dim: rgba(232, 242, 255, 0.6);
+}
+
+.waes-app {
+  background: radial-gradient(circle at 20% -10%, rgba(80, 140, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 90% 10%, rgba(124, 212, 255, 0.08), transparent 35%), var(--waes-bg);
+  background-attachment: fixed;
+  color: var(--waes-text);
+  min-height: 100vh;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.waes-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(var(--waes-bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--waes-bg-grid) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.4;
+  z-index: 0;
+}
+
+.waes-tabs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+}
+
+.waes-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--waes-text-dim);
+  padding: 8px 16px;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.waes-tab.active {
+  color: var(--waes-text);
+  background: var(--waes-glass);
+  border-color: var(--waes-glass-border);
+  border-bottom: none;
+  box-shadow: 0 -2px 20px rgba(124, 212, 255, 0.08);
+}
+
+.waes-panel {
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+}
+
+/* The etched glass card: a blurred glass surface whose border is a moving
+   gradient masked to just the 1px edge, giving the "light flowing along an
+   etched line" effect without any image assets or canvas/WebGL. */
+.glass-card {
+  position: relative;
+  background: var(--waes-glass);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 0 40px rgba(80, 140, 255, 0.06) inset, 0 8px 30px rgba(0, 0, 0, 0.35);
+  isolation: isolate;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(115deg, transparent 30%, var(--waes-accent) 45%, var(--waes-accent-soft) 50%, transparent 65%);
+  background-size: 260% 260%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: waes-etch-flow 5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes waes-etch-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 200%;
+  }
+}
+
+.glass-card h3 {
+  margin: 0 0 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--waes-text);
+}
+
+.waes-input,
+.waes-select {
+  background: rgba(8, 12, 20, 0.6);
+  border: 1px solid var(--waes-glass-border);
+  color: var(--waes-text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.waes-input:focus,
+.waes-select:focus {
+  outline: none;
+  border-color: var(--waes-accent);
+  box-shadow: 0 0 0 2px var(--waes-accent-soft);
+}
+
+.waes-button {
+  background: linear-gradient(135deg, rgba(124, 212, 255, 0.18), rgba(80, 140, 255, 0.1));
+  border: 1px solid var(--waes-accent-soft);
+  color: var(--waes-text);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.waes-button:hover {
+  border-color: var(--waes-accent);
+  box-shadow: 0 0 16px rgba(124, 212, 255, 0.2);
+}
+
+.waes-slider {
+  width: 100%;
+  accent-color: var(--waes-accent);
+}
+
+.waes-rating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 2px;
+  background: var(--waes-accent);
+}
+
+.waes-rating-dot.dim {
+  background: rgba(232, 242, 255, 0.15);
+}
+
+.waes-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 4, 8, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.waes-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--waes-glass-border);
+  color: var(--waes-text-dim);
+}
+
+.waes-badge.warn {
+  border-color: rgba(255, 140, 120, 0.6);
+  color: #ffb2a3;
+}

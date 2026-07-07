@@ -1,4 +1,49 @@
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS tools (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  cost_type TEXT NOT NULL, -- free | freemium | subscription | one_time | usage_based
+  cost_amount_cents INTEGER,
+  cost_per TEXT, -- project | month | unit
+  terms_summary TEXT,
+  terms_url TEXT,
+  hosting TEXT NOT NULL, -- self | hosted | both
+  license TEXT, -- open_source | proprietary
+  ease_of_use INTEGER, -- 1-5
+  speed INTEGER, -- 1-5
+  quality INTEGER, -- 1-5
+  privacy INTEGER, -- 1-5, data privacy / security posture
+  vendor_lock_in INTEGER, -- 1-5, 5 = easiest to migrate away from
+  integrations INTEGER, -- 1-5, API/ecosystem breadth
+  support INTEGER, -- 1-5, community & support quality
+  scalability INTEGER, -- 1-5
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS stacks (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  budget_cents INTEGER,
+  budget_period TEXT, -- project | month
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS stack_items (
+  id TEXT PRIMARY KEY,
+  stack_id TEXT NOT NULL REFERENCES stacks(id),
+  tool_id TEXT NOT NULL REFERENCES tools(id),
+  category TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS break_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  interval_minutes INTEGER NOT NULL DEFAULT 25,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  exercise_types_json TEXT
+);
+
 CREATE TABLE IF NOT EXISTS scans (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
