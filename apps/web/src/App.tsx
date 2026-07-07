@@ -10,6 +10,7 @@ import { CostPanel } from "./CostPanel";
 import { MemoryPanel } from "./MemoryPanel";
 import { JobsPanel } from "./JobsPanel";
 import { MacroPanel } from "./MacroPanel";
+import { RoundTablePanel } from "./RoundTablePanel";
 import "./theme.css";
 
 function SettingsBar() {
@@ -65,10 +66,11 @@ function ChatGrid() {
   );
 }
 
-type Tab = "chat" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory" | "jobs" | "macros";
+type Tab = "chat" | "roundtable" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory" | "jobs" | "macros";
 
 const TAB_LABELS: Record<Tab, string> = {
   chat: "Chat",
+  roundtable: "Round Table",
   stack: "Stack Builder",
   breaks: "Break Timer",
   termlens: "TermLens",
@@ -95,6 +97,7 @@ export default function App() {
       </div>
       <div className="waes-panel" style={{ flex: 1, display: "flex" }}>
         {tab === "chat" && <ChatGrid />}
+        {tab === "roundtable" && <RoundTablePanel />}
         {tab === "stack" && <StackBuilder />}
         {tab === "breaks" && <BreakTimer />}
         {tab === "termlens" && <TermLensPanel />}

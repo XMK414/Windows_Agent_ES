@@ -404,3 +404,25 @@ export async function runMacro(promptRef: string, provider: string, model: strin
   if (!res.ok) throw new Error(data.error ?? "macro run failed");
   return data;
 }
+
+// ---- Round table ----
+
+export interface RoundtableSpeaker {
+  kind: "llm" | "user";
+  label: string;
+  adapterId?: string;
+  model?: string;
+  personaId?: string;
+}
+
+export async function createRoundtableThread(topic?: string): Promise<string> {
+  const res = await request("/api/roundtable/threads", { method: "POST", body: JSON.stringify({ topic }) });
+  return (await res.json()).id;
+}
+
+export async function takeRoundtableTurn(threadId: string, speaker: RoundtableSpeaker, content?: string): Promise<{ speaker: string; content: string }> {
+  const res = await request(`/api/roundtable/threads/${threadId}/turns`, { method: "POST", body: JSON.stringify({ speaker, content }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "turn failed");
+  return data;
+}
