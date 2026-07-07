@@ -1,0 +1,311 @@
+import { useEffect, useState } from "react";
+import {
+  createProject,
+  listProjects,
+  listProjectFiles,
+  uploadProjectFile,
+  readProjectFile,
+  listArtifacts,
+  createArtifact,
+  runCli,
+  listGoals,
+  createGoal,
+  setGoalStatus,
+  createStep,
+  setStepStatus,
+  type Project,
+} from "./api";
+
+type SubTab = "files" | "artifacts" | "cli" | "goals";
+const STATUSES = ["todo", "doing", "blocked", "done"] as const;
+
+function FilesTab({ projectId }: { projectId: string }) {
+  const [files, setFiles] = useState<any[]>([]);
+  const [relPath, setRelPath] = useState("");
+  const [content, setContent] = useState("");
+  const [viewed, setViewed] = useState<{ path: string; content: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    setFiles(await listProjectFiles(projectId));
+  }
+  useEffect(() => {
+    refresh();
+  }, [projectId]);
+
+  async function upload() {
+    setError(null);
+    try {
+      await uploadProjectFile(projectId, relPath, content);
+      setRelPath("");
+      setContent("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function view(path: string) {
+    const c = await readProjectFile(projectId, path);
+    setViewed({ path, content: c });
+  }
+
+  return (
+    <div className="glass-card">
+      <h3>Files</h3>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <input className="waes-input" placeholder="path/to/file.md" value={relPath} onChange={(e) => setRelPath(e.target.value)} />
+        <button className="waes-button" onClick={upload}>
+          Upload
+        </button>
+      </div>
+      <textarea className="waes-input" placeholder="File content" value={content} onChange={(e) => setContent(e.target.value)} style={{ width: "100%", height: 80, marginBottom: 8 }} />
+      {error && <div style={{ color: "#ffb2a3", fontSize: 12 }}>{error}</div>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        {files.map((f) => (
+          <span key={f.id} className="waes-badge" style={{ cursor: "pointer" }} onClick={() => view(f.rel_path)}>
+            {f.rel_path} ({f.size}b)
+          </span>
+        ))}
+      </div>
+      {viewed && (
+        <pre style={{ marginTop: 8, fontSize: 12, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.3)", padding: 8, borderRadius: 8 }}>
+          {viewed.path}
+          {"\n\n"}
+          {viewed.content}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function ArtifactsTab({ projectId }: { projectId: string }) {
+  const [artifacts, setArtifacts] = useState<any[]>([]);
+  const [name, setName] = useState("");
+  const [content, setContent] = useState("");
+
+  async function refresh() {
+    setArtifacts(await listArtifacts(projectId));
+  }
+  useEffect(() => {
+    refresh();
+  }, [projectId]);
+
+  async function create() {
+    if (!name || !content) return;
+    await createArtifact(projectId, name, content, "user");
+    setContent("");
+    refresh();
+  }
+
+  return (
+    <div className="glass-card">
+      <h3>Artifacts</h3>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <input className="waes-input" placeholder="artifact name" value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="waes-button" onClick={create}>
+          Save new version
+        </button>
+      </div>
+      <textarea className="waes-input" placeholder="content" value={content} onChange={(e) => setContent(e.target.value)} style={{ width: "100%", height: 80, marginBottom: 8 }} />
+      {artifacts.map((a) => (
+        <div key={a.id} style={{ fontSize: 12, padding: "4px 0", borderTop: "1px solid var(--waes-glass-border)" }}>
+          <b>{a.name}</b> v{a.version} · by {a.created_by_pane} · {new Date(a.created_at).toLocaleString()}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CliTab({ projectId }: { projectId: string }) {
+  const [cmd, setCmd] = useState("git");
+  const [args, setArgs] = useState("status");
+  const [result, setResult] = useState<{ exitCode: number | null; stdout: string; stderr: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setError(null);
+    try {
+      setResult(await runCli(projectId, cmd, args.split(" ").filter(Boolean)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="glass-card">
+      <h3>CLI (allowlisted: git, node, npm, claude)</h3>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <input className="waes-input" value={cmd} onChange={(e) => setCmd(e.target.value)} style={{ width: 100 }} />
+        <input className="waes-input" value={args} onChange={(e) => setArgs(e.target.value)} style={{ flex: 1 }} placeholder="args, space separated" />
+        <button className="waes-button" onClick={run}>
+          Run
+        </button>
+      </div>
+      {error && <div style={{ color: "#ffb2a3", fontSize: 12 }}>{error}</div>}
+      {result && (
+        <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", background: "rgba(0,0,0,0.3)", padding: 8, borderRadius: 8 }}>
+          exit: {String(result.exitCode)}
+          {"\n"}
+          {result.stdout}
+          {result.stderr}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function GoalsTab({ projectId }: { projectId: string }) {
+  const [goals, setGoals] = useState<any[]>([]);
+  const [title, setTitle] = useState("");
+
+  async function refresh() {
+    setGoals(await listGoals(projectId));
+  }
+  useEffect(() => {
+    refresh();
+  }, [projectId]);
+
+  async function addGoal() {
+    if (!title) return;
+    await createGoal(projectId, title);
+    setTitle("");
+    refresh();
+  }
+
+  return (
+    <div className="glass-card">
+      <h3>Goals</h3>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <input className="waes-input" placeholder="New goal" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <button className="waes-button" onClick={addGoal}>
+          Add
+        </button>
+      </div>
+      {goals.map((g) => (
+        <div key={g.id} style={{ borderTop: "1px solid var(--waes-glass-border)", padding: "8px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <b>{g.title}</b>
+            <select
+              className="waes-select"
+              value={g.status}
+              onChange={async (e) => {
+                await setGoalStatus(g.id, e.target.value);
+                refresh();
+              }}
+            >
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <StepList goal={g} onChange={refresh} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StepList({ goal, onChange }: { goal: any; onChange: () => void }) {
+  const [title, setTitle] = useState("");
+
+  async function addStep() {
+    if (!title) return;
+    await createStep(goal.id, title);
+    setTitle("");
+    onChange();
+  }
+
+  return (
+    <div style={{ marginLeft: 12, marginTop: 6 }}>
+      {goal.steps.map((s: any) => (
+        <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "2px 0" }}>
+          <span>{s.title}</span>
+          <select
+            className="waes-select"
+            value={s.status}
+            onChange={async (e) => {
+              await setStepStatus(s.id, e.target.value);
+              onChange();
+            }}
+          >
+            {STATUSES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+        <input className="waes-input" placeholder="New step" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontSize: 12 }} />
+        <button className="waes-button" onClick={addStep} style={{ fontSize: 12 }}>
+          Add step
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function ProjectsPanel() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [subTab, setSubTab] = useState<SubTab>("files");
+
+  async function refresh() {
+    const list = await listProjects();
+    setProjects(list);
+    if (!selected && list.length) setSelected(list[0].id);
+  }
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function create() {
+    if (!newName) return;
+    const p = await createProject(newName);
+    setNewName("");
+    await refresh();
+    setSelected(p.id);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 900, width: "100%" }}>
+      <div className="glass-card">
+        <h3>Projects</h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select className="waes-select" value={selected ?? ""} onChange={(e) => setSelected(e.target.value)}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <input className="waes-input" placeholder="New project name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <button className="waes-button" onClick={create}>
+            Create
+          </button>
+        </div>
+      </div>
+
+      {selected && (
+        <>
+          <div className="waes-tabs" style={{ padding: 0 }}>
+            {(["files", "artifacts", "cli", "goals"] as SubTab[]).map((t) => (
+              <button key={t} className={`waes-tab${subTab === t ? " active" : ""}`} onClick={() => setSubTab(t)}>
+                {t[0].toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+          {subTab === "files" && <FilesTab projectId={selected} />}
+          {subTab === "artifacts" && <ArtifactsTab projectId={selected} />}
+          {subTab === "cli" && <CliTab projectId={selected} />}
+          {subTab === "goals" && <GoalsTab projectId={selected} />}
+        </>
+      )}
+    </div>
+  );
+}

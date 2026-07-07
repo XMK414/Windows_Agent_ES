@@ -1,0 +1,8 @@
+{
+  "name": "windows-agent-es",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=@windows-agent-es/server"
+  }
+}
