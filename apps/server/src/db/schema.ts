@@ -1,4 +1,15 @@
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS scans (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  source TEXT NOT NULL,
+  overall_risk TEXT,
+  summary TEXT,
+  result_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

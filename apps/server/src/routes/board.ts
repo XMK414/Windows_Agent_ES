@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type Database from "better-sqlite3";
 import { v4 as uuid } from "uuid";
 import type { ChatProvider } from "../adapters/provider-adapter.interface.js";
+import { collectFull } from "../adapters/collect.js";
 import { ContextResolver } from "../injection/context-resolver.js";
 import type { AuditLog } from "../security/audit-log.js";
 
@@ -9,15 +10,6 @@ interface Seat {
   adapterId: string;
   model: string;
   personaId?: string; // e.g. "persona/skeptical-reviewer"
-}
-
-async function collectFull(provider: ChatProvider, model: string, messages: { role: "user"; content: string }[], injectedContext: string[]): Promise<string> {
-  let text = "";
-  for await (const chunk of provider.send({ threadId: "board", model, messages, injectedContext })) {
-    if (chunk.type === "delta" && chunk.text) text += chunk.text;
-    if (chunk.type === "error") throw new Error(chunk.error);
-  }
-  return text;
 }
 
 export function registerBoardRoutes(

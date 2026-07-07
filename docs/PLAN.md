@@ -94,6 +94,19 @@ leaving the machine.
 - Kanban-style board view
 - Board of Directors can review goals/steps and propose next actions
 
+### TermLens Scanner (added mid-build)
+
+A plain-English contract/ToS clause scanner, built as a feature of the ES
+rather than a separate public product: `POST /api/termlens/scan` runs the
+`agent/termlens-scanner` persona over pasted text, returns structured
+clause-by-clause risk output, and auto-saves every scan (DB row + a vault
+note) so scans are searchable via the memory query alongside everything
+else. A public marketing landing page for this was considered and
+deliberately deferred — it implies a different trust model (public,
+unauthenticated, hosted) than this app's localhost-only/install-token
+design, and mixing the two would either weaken that model or require a
+genuinely separate deployment. Revisit as its own small project if wanted.
+
 ### Phase 7 — Polish & cross-machine
 - Voice in/out (optional, per pane)
 - Macro runner (saved prompt + injected context → one-click)

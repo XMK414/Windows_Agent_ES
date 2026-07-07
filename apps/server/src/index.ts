@@ -20,6 +20,7 @@ import { registerBoardRoutes } from "./routes/board.js";
 import { registerGoalRoutes } from "./routes/goals.js";
 import { registerCostRoutes } from "./routes/cost.js";
 import { registerMemoryRoutes } from "./routes/memory.js";
+import { registerTermLensRoutes } from "./routes/termlens.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -95,6 +96,7 @@ registerBoardRoutes(app, { db, providers, contextResolver, auditLog });
 registerGoalRoutes(app, { db, auditLog });
 registerCostRoutes(app, { db });
 registerMemoryRoutes(app, { vaultDir: VAULT_DIR, projectsDir: PROJECTS_DIR, libraryDir: path.join(REPO_ROOT, "library-templates") });
+registerTermLensRoutes(app, { db, providers, contextResolver, vaultDir: VAULT_DIR, auditLog });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login
