@@ -25,15 +25,18 @@ import { registerToolRoutes } from "./routes/tools.js";
 import { registerStackRoutes } from "./routes/stacks.js";
 import { registerBreakRoutes } from "./routes/breaks.js";
 import { registerJobRoutes } from "./routes/jobs.js";
+import { registerWebSessionRoutes } from "./routes/web-session.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
 import { JobScheduler } from "./jobs/scheduler.js";
+import { EmbeddingIndex } from "./memory/embedding-index.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const PROJECTS_DIR = path.join(DATA_DIR, "projects");
 const VAULT_DIR = path.join(DATA_DIR, "vault");
+const BROWSER_PROFILES_DIR = path.join(DATA_DIR, "browser-profiles");
 const WEB_ORIGIN = process.env.WAES_WEB_ORIGIN ?? "http://127.0.0.1:5173";
 const PORT = Number(process.env.WAES_PORT ?? 8787);
 
@@ -88,7 +91,13 @@ app.use(
 
 registerRoutes(app, { db, vault, auditLog, dataDir: DATA_DIR });
 
-const providers = buildProviderRegistry(vault);
+const providers = buildProviderRegistry(vault, BROWSER_PROFILES_DIR);
+if (process.env.WAES_ENABLE_WEB_SESSION_ADAPTERS === "true") {
+  console.warn(
+    "WAES_ENABLE_WEB_SESSION_ADAPTERS=true — claude-web/gemini-web are active. " +
+      "Personal use only; see docs/SECURITY.md before enabling this for anyone else.",
+  );
+}
 const libraryIndex = new FileLibraryIndex(path.join(REPO_ROOT, "library-templates"));
 const contextResolver = new ContextResolver(PROJECTS_DIR, libraryIndex);
 registerThreadRoutes(app, { db, providers, contextResolver, auditLog });
@@ -100,7 +109,9 @@ registerCliRoutes(app, { projectsDir: PROJECTS_DIR, auditLog });
 registerBoardRoutes(app, { db, providers, contextResolver, auditLog });
 registerGoalRoutes(app, { db, auditLog });
 registerCostRoutes(app, { db });
-registerMemoryRoutes(app, { vaultDir: VAULT_DIR, projectsDir: PROJECTS_DIR, libraryDir: path.join(REPO_ROOT, "library-templates") });
+const libraryDir = path.join(REPO_ROOT, "library-templates");
+const embeddingIndex = new EmbeddingIndex(db, vault, { vaultDir: VAULT_DIR, libraryDir, projectsDir: PROJECTS_DIR });
+registerMemoryRoutes(app, { vaultDir: VAULT_DIR, projectsDir: PROJECTS_DIR, libraryDir, embeddingIndex });
 registerTermLensRoutes(app, { db, providers, contextResolver, vaultDir: VAULT_DIR, auditLog });
 registerToolRoutes(app, { db });
 registerStackRoutes(app, { db });
@@ -109,6 +120,7 @@ registerBreakRoutes(app, { db });
 const jobScheduler = new JobScheduler(db, providers, libraryIndex, VAULT_DIR, auditLog);
 jobScheduler.start();
 registerJobRoutes(app, { db, providers, scheduler: jobScheduler });
+registerWebSessionRoutes(app, { providers, auditLog });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login

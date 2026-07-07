@@ -1,30 +1,12 @@
 import type { Express } from "express";
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import path from "node:path";
+import { readFileSync } from "node:fs";
+import { scanMemoryCandidates } from "../memory/scan.js";
+import type { EmbeddingIndex } from "../memory/embedding-index.js";
 
 interface SearchHit {
   source: string;
   snippet: string;
   score: number;
-}
-
-function walkFiles(root: string): string[] {
-  const out: string[] = [];
-  function walk(dir: string) {
-    let entries: string[] = [];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const name of entries) {
-      const abs = path.join(dir, name);
-      if (statSync(abs).isDirectory()) walk(abs);
-      else if (name.endsWith(".md")) out.push(abs);
-    }
-  }
-  walk(root);
-  return out;
 }
 
 function scoreAndSnippet(content: string, terms: string[]): { score: number; snippet: string } {
@@ -44,35 +26,56 @@ function scoreAndSnippet(content: string, terms: string[]): { score: number; sni
   return { score, snippet };
 }
 
-/**
- * Keyword-search MVP for the "NotebookLM-style" memory query — retrieves
- * across the Obsidian vault, library, and project files with a source
- * citation on every hit. docs/PLAN.md Phase 5 upgrades this to a real
- * embedding index; the citation-per-hit contract stays the same so the UI
- * doesn't need to change when that lands.
- */
-export function registerMemoryRoutes(app: Express, deps: { vaultDir: string; projectsDir: string; libraryDir: string }): void {
-  const { vaultDir, projectsDir, libraryDir } = deps;
+function keywordSearch(dirs: { vaultDir: string; libraryDir: string; projectsDir: string }, q: string): SearchHit[] {
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const candidates = scanMemoryCandidates(dirs);
 
-  app.get("/api/memory/query", (req, res) => {
+  const hits: SearchHit[] = [];
+  for (const candidate of candidates) {
+    const content = readFileSync(candidate.path, "utf8");
+    const { score, snippet } = scoreAndSnippet(content, terms);
+    if (score > 0) hits.push({ source: candidate.source, snippet, score });
+  }
+  hits.sort((a, b) => b.score - a.score);
+  return hits.slice(0, 20);
+}
+
+/**
+ * Prefers the real embedding index (see memory/embedding-index.ts) and
+ * transparently falls back to keyword search when no embeddings have been
+ * indexed yet or the Google key needed to embed the query isn't
+ * configured — the response's `mode` field tells the UI which one ran.
+ */
+export function registerMemoryRoutes(
+  app: Express,
+  deps: { vaultDir: string; projectsDir: string; libraryDir: string; embeddingIndex: EmbeddingIndex },
+): void {
+  const { vaultDir, projectsDir, libraryDir, embeddingIndex } = deps;
+  const dirs = { vaultDir, libraryDir, projectsDir };
+
+  app.get("/api/memory/query", async (req, res) => {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     if (!q) return res.status(400).json({ error: "q required" });
 
-    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
-    const candidates = [
-      ...walkFiles(vaultDir).map((p) => ({ path: p, source: `note:${path.relative(vaultDir, p)}` })),
-      ...walkFiles(libraryDir).map((p) => ({ path: p, source: `library:${path.relative(libraryDir, p)}` })),
-      ...walkFiles(projectsDir).map((p) => ({ path: p, source: `file:${path.relative(projectsDir, p)}` })),
-    ];
-
-    const hits: SearchHit[] = [];
-    for (const candidate of candidates) {
-      const content = readFileSync(candidate.path, "utf8");
-      const { score, snippet } = scoreAndSnippet(content, terms);
-      if (score > 0) hits.push({ source: candidate.source, snippet, score });
+    if (embeddingIndex.isAvailable()) {
+      try {
+        const hits = await embeddingIndex.query(q);
+        return res.json({ query: q, mode: "embedding", hits });
+      } catch {
+        // Falls through to keyword search — e.g. the Google key was
+        // removed after indexing, or a transient API error.
+      }
     }
 
-    hits.sort((a, b) => b.score - a.score);
-    res.json({ query: q, hits: hits.slice(0, 20) });
+    res.json({ query: q, mode: "keyword", hits: keywordSearch(dirs, q) });
+  });
+
+  app.post("/api/memory/reindex", async (_req, res) => {
+    try {
+      const result = await embeddingIndex.reindex();
+      res.json(result);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 }

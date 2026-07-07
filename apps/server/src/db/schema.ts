@@ -1,4 +1,12 @@
 export const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS memory_embeddings (
+  source TEXT PRIMARY KEY,
+  content_hash TEXT NOT NULL,
+  embedding_json TEXT NOT NULL,
+  snippet TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tools (
   id TEXT PRIMARY KEY,
   category TEXT NOT NULL,
