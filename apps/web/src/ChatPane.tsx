@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createThread, sendMessage, saveNote, listLibrary, type InjectionRef, type LibraryListItem } from "./api";
+import { isSpeechRecognitionSupported, isSpeechSynthesisSupported, startListening, speak } from "./speech";
 
 interface ModelOption {
   id: string;
@@ -35,6 +36,10 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
   const [pendingInjections, setPendingInjections] = useState<InjectionRef[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionResults, setMentionResults] = useState<LibraryListItem[]>([]);
+
+  const [listening, setListening] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(false);
+  const [stopListening, setStopListening] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     if (mentionQuery === null) return;
@@ -72,10 +77,12 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
     setMessages((prev) => [...prev, { role: "user", content }]);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
+    let assistantText = "";
     try {
       const id = await ensureThread();
       for await (const frame of sendMessage(id, content, injections)) {
         if (frame.event === "delta") {
+          assistantText += frame.data.text;
           setMessages((prev) => {
             const next = [...prev];
             next[next.length - 1] = { role: "assistant", content: next[next.length - 1].content + frame.data.text };
@@ -83,12 +90,34 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
           });
         } else if (frame.event === "error") {
           setError(frame.data.error);
+        } else if (frame.event === "done" && autoSpeak) {
+          speak(assistantText);
         }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  function toggleMic() {
+    if (stopListening) {
+      stopListening();
+      setStopListening(null);
+      setListening(false);
+      return;
+    }
+    const stop = startListening(
+      (transcript) => setInput((prev) => (prev ? `${prev} ${transcript}` : transcript)),
+      () => {
+        setListening(false);
+        setStopListening(null);
+      },
+    );
+    if (stop) {
+      setStopListening(() => stop);
+      setListening(true);
     }
   }
 
@@ -117,8 +146,14 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
 
   return (
     <div style={{ display: "flex", flexDirection: "column", border: "1px solid #444", borderRadius: 8, padding: 8, height: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, alignItems: "center" }}>
         <strong>{label}</strong>
+        {isSpeechSynthesisSupported() && (
+          <label style={{ fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+            <input type="checkbox" checked={autoSpeak} onChange={(e) => setAutoSpeak(e.target.checked)} />
+            Speak replies
+          </label>
+        )}
         <select value={model} onChange={(e) => setModel(e.target.value)} disabled={threadId !== null}>
           {MODELS[provider].map((m) => (
             <option key={m.id} value={m.id}>
@@ -181,6 +216,11 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
             placeholder="Message... (@ to inject a library item)"
             style={{ flex: 1 }}
           />
+          {isSpeechRecognitionSupported() && (
+            <button onClick={toggleMic} title="Voice input" style={{ background: listening ? "var(--waes-accent-soft, #446)" : undefined }}>
+              {listening ? "● Listening" : "🎤"}
+            </button>
+          )}
           <button onClick={handleSend} disabled={busy}>
             Send
           </button>

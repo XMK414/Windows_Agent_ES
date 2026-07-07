@@ -395,3 +395,12 @@ export async function runJobNow(id: string): Promise<{ text: string }> {
   if (!res.ok) throw new Error(data.error ?? "job run failed");
   return data;
 }
+
+// ---- Macros ----
+
+export async function runMacro(promptRef: string, provider: string, model: string, injections: InjectionRef[] = []): Promise<{ text: string }> {
+  const res = await request("/api/macros/run", { method: "POST", body: JSON.stringify({ promptRef, provider, model, injections }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "macro run failed");
+  return data;
+}
