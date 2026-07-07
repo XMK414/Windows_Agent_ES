@@ -4,7 +4,8 @@ import { v4 as uuid } from "uuid";
 import { mkdirSync, writeFileSync } from "node:fs";
 import matter from "gray-matter";
 import type { ChatProvider } from "../adapters/provider-adapter.interface.js";
-import { collectFull } from "../adapters/collect.js";
+import { collectFullWithUsage } from "../adapters/collect.js";
+import { estimateCostCents } from "../adapters/pricing.js";
 import { ContextResolver } from "../injection/context-resolver.js";
 import { resolveJailedPath } from "../security/path-jail.js";
 import type { AuditLog } from "../security/audit-log.js";
@@ -60,12 +61,19 @@ export function registerTermLensRoutes(
     let result: ScanResult;
     let rawText = "";
     try {
-      rawText = await collectFull(
+      const { text: scanText, usage } = await collectFullWithUsage(
         chatProvider,
         model,
         [{ role: "user", content: "Analyze the document in the injected context and respond with ONLY the JSON described in your instructions." }],
         [...persona.map((p) => p.block), documentBlock],
       );
+      rawText = scanText;
+      if (usage) {
+        const costCents = estimateCostCents(model, usage.inputTokens, usage.outputTokens);
+        db.prepare(
+          `INSERT INTO cost_ledger (id, provider, model, tokens_in, tokens_out, cost_cents, thread_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NULL, ?)`,
+        ).run(uuid(), provider, model, usage.inputTokens, usage.outputTokens, costCents, new Date().toISOString());
+      }
       result = parseScanResult(rawText);
     } catch (err) {
       return res.status(502).json({

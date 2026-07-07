@@ -357,3 +357,41 @@ export async function queryMemory(q: string): Promise<{ query: string; hits: { s
   const res = await request(`/api/memory/query?q=${encodeURIComponent(q)}`);
   return res.json();
 }
+
+// ---- Scheduled jobs ----
+
+export interface JobInput {
+  name: string;
+  cronExpr: string;
+  adapter: string;
+  model: string;
+  promptRef: string;
+  costCapCents: number;
+}
+
+export async function createJob(input: JobInput) {
+  const res = await request("/api/jobs", { method: "POST", body: JSON.stringify(input) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create job");
+  return data.id as string;
+}
+
+export async function listJobs(): Promise<any[]> {
+  const res = await request("/api/jobs");
+  return (await res.json()).jobs ?? [];
+}
+
+export async function setJobEnabled(id: string, enabled: boolean) {
+  return request(`/api/jobs/${id}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
+}
+
+export async function deleteJob(id: string) {
+  return request(`/api/jobs/${id}`, { method: "DELETE" });
+}
+
+export async function runJobNow(id: string): Promise<{ text: string }> {
+  const res = await request(`/api/jobs/${id}/run-now`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "job run failed");
+  return data;
+}

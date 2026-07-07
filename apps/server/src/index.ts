@@ -24,9 +24,11 @@ import { registerTermLensRoutes } from "./routes/termlens.js";
 import { registerToolRoutes } from "./routes/tools.js";
 import { registerStackRoutes } from "./routes/stacks.js";
 import { registerBreakRoutes } from "./routes/breaks.js";
+import { registerJobRoutes } from "./routes/jobs.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
+import { JobScheduler } from "./jobs/scheduler.js";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const DATA_DIR = path.resolve(process.cwd(), "data");
@@ -103,6 +105,10 @@ registerTermLensRoutes(app, { db, providers, contextResolver, vaultDir: VAULT_DI
 registerToolRoutes(app, { db });
 registerStackRoutes(app, { db });
 registerBreakRoutes(app, { db });
+
+const jobScheduler = new JobScheduler(db, providers, libraryIndex, VAULT_DIR, auditLog);
+jobScheduler.start();
+registerJobRoutes(app, { db, providers, scheduler: jobScheduler });
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login

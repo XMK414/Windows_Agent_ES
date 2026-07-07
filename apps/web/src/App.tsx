@@ -8,6 +8,7 @@ import { ProjectsPanel } from "./ProjectsPanel";
 import { BoardPanel } from "./BoardPanel";
 import { CostPanel } from "./CostPanel";
 import { MemoryPanel } from "./MemoryPanel";
+import { JobsPanel } from "./JobsPanel";
 import "./theme.css";
 
 function SettingsBar() {
@@ -63,7 +64,7 @@ function ChatGrid() {
   );
 }
 
-type Tab = "chat" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory";
+type Tab = "chat" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory" | "jobs";
 
 const TAB_LABELS: Record<Tab, string> = {
   chat: "Chat",
@@ -74,6 +75,7 @@ const TAB_LABELS: Record<Tab, string> = {
   board: "Board of Directors",
   cost: "Cost",
   memory: "Memory",
+  jobs: "Jobs",
 };
 
 export default function App() {
@@ -98,6 +100,7 @@ export default function App() {
         {tab === "board" && <BoardPanel />}
         {tab === "cost" && <CostPanel />}
         {tab === "memory" && <MemoryPanel />}
+        {tab === "jobs" && <JobsPanel />}
       </div>
     </div>
   );

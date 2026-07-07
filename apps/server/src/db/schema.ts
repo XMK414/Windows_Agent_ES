@@ -144,10 +144,12 @@ CREATE TABLE IF NOT EXISTS jobs (
   name TEXT NOT NULL,
   cron TEXT NOT NULL,
   adapter TEXT NOT NULL,
+  model TEXT NOT NULL,
   prompt_ref TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1,
   cost_cap_cents INTEGER NOT NULL,
-  last_run_at TEXT
+  last_run_at TEXT,
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS cost_ledger (

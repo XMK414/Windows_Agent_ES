@@ -2,7 +2,8 @@ import type { Express } from "express";
 import type Database from "better-sqlite3";
 import { v4 as uuid } from "uuid";
 import type { ChatProvider } from "../adapters/provider-adapter.interface.js";
-import { collectFull } from "../adapters/collect.js";
+import { collectFullWithUsage } from "../adapters/collect.js";
+import { estimateCostCents } from "../adapters/pricing.js";
 import { ContextResolver } from "../injection/context-resolver.js";
 import type { AuditLog } from "../security/audit-log.js";
 
@@ -47,12 +48,21 @@ export function registerBoardRoutes(
       now,
     );
 
+    function recordCost(provider: string, model: string, usage?: { inputTokens: number; outputTokens: number }) {
+      if (!usage) return;
+      const costCents = estimateCostCents(model, usage.inputTokens, usage.outputTokens);
+      db.prepare(
+        `INSERT INTO cost_ledger (id, provider, model, tokens_in, tokens_out, cost_cents, thread_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(uuid(), provider, model, usage.inputTokens, usage.outputTokens, costCents, threadId, new Date().toISOString());
+    }
+
     const seatResults = await Promise.allSettled(
       seats.map(async (seat) => {
         const provider = providers.get(seat.adapterId)!;
         const injected = seat.personaId ? contextResolver.resolve([{ kind: "library", ref: seat.personaId }]) : [];
         await auditLog.append({ action: "board.seat.run", actor: "user", target: seat.adapterId, detail: { model: seat.model, personaId: seat.personaId } });
-        const text = await collectFull(provider, seat.model, [{ role: "user", content: prompt }], injected.map((i) => i.block));
+        const { text, usage } = await collectFullWithUsage(provider, seat.model, [{ role: "user", content: prompt }], injected.map((i) => i.block));
+        recordCost(seat.adapterId, seat.model, usage);
         return { seat, text };
       }),
     );
@@ -79,7 +89,9 @@ export function registerBoardRoutes(
 
     let synthesis: string;
     try {
-      synthesis = await collectFull(providers.get(chair.adapterId)!, chair.model, [{ role: "user", content: synthesisPrompt }], []);
+      const { text, usage } = await collectFullWithUsage(providers.get(chair.adapterId)!, chair.model, [{ role: "user", content: synthesisPrompt }], []);
+      recordCost(chair.adapterId, chair.model, usage);
+      synthesis = text;
     } catch (err) {
       synthesis = `[chair synthesis error: ${err instanceof Error ? err.message : String(err)}]`;
     }

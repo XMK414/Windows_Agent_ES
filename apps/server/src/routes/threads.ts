@@ -4,6 +4,7 @@ import { v4 as uuid } from "uuid";
 import type { ChatProvider, Message } from "../adapters/provider-adapter.interface.js";
 import { ContextResolver, type InjectionRef } from "../injection/context-resolver.js";
 import { AuditLog } from "../security/audit-log.js";
+import { estimateCostCents } from "../adapters/pricing.js";
 
 export interface ThreadRouteDeps {
   db: Database.Database;
@@ -102,10 +103,11 @@ export function registerThreadRoutes(app: Express, deps: ThreadRouteDeps): void 
           ).run(assistantId, threadId, assistantText, new Date().toISOString());
 
           if (chunk.usage) {
+            const costCents = estimateCostCents(thread.model, chunk.usage.inputTokens, chunk.usage.outputTokens);
             db.prepare(
               `INSERT INTO cost_ledger (id, provider, model, tokens_in, tokens_out, cost_cents, thread_id, created_at)
-               VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-            ).run(uuid(), thread.provider, thread.model, chunk.usage.inputTokens, chunk.usage.outputTokens, threadId, new Date().toISOString());
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            ).run(uuid(), thread.provider, thread.model, chunk.usage.inputTokens, chunk.usage.outputTokens, costCents, threadId, new Date().toISOString());
           }
 
           res.write(`event: done\ndata: ${JSON.stringify({ usage: chunk.usage })}\n\n`);
