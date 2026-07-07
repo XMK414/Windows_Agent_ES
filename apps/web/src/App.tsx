@@ -3,6 +3,11 @@ import { setInstallToken, setSecret, getStatus } from "./api";
 import { ChatPane } from "./ChatPane";
 import { StackBuilder } from "./StackBuilder";
 import { BreakTimer } from "./BreakTimer";
+import { TermLensPanel } from "./TermLensPanel";
+import { ProjectsPanel } from "./ProjectsPanel";
+import { BoardPanel } from "./BoardPanel";
+import { CostPanel } from "./CostPanel";
+import { MemoryPanel } from "./MemoryPanel";
 import "./theme.css";
 
 function SettingsBar() {
@@ -58,7 +63,18 @@ function ChatGrid() {
   );
 }
 
-type Tab = "chat" | "stack" | "breaks";
+type Tab = "chat" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory";
+
+const TAB_LABELS: Record<Tab, string> = {
+  chat: "Chat",
+  stack: "Stack Builder",
+  breaks: "Break Timer",
+  termlens: "TermLens",
+  projects: "Projects",
+  board: "Board of Directors",
+  cost: "Cost",
+  memory: "Memory",
+};
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("chat");
@@ -66,10 +82,10 @@ export default function App() {
   return (
     <div className="waes-app" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <SettingsBar />
-      <div className="waes-tabs">
-        {(["chat", "stack", "breaks"] as Tab[]).map((t) => (
+      <div className="waes-tabs" style={{ flexWrap: "wrap" }}>
+        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
           <button key={t} className={`waes-tab${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
-            {t === "chat" ? "Chat" : t === "stack" ? "Stack Builder" : "Break Timer"}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -77,6 +93,11 @@ export default function App() {
         {tab === "chat" && <ChatGrid />}
         {tab === "stack" && <StackBuilder />}
         {tab === "breaks" && <BreakTimer />}
+        {tab === "termlens" && <TermLensPanel />}
+        {tab === "projects" && <ProjectsPanel />}
+        {tab === "board" && <BoardPanel />}
+        {tab === "cost" && <CostPanel />}
+        {tab === "memory" && <MemoryPanel />}
       </div>
     </div>
   );

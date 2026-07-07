@@ -207,3 +207,153 @@ export async function setBreakSettings(settings: BreakSettings) {
   if (!res.ok) throw new Error((await res.json()).error ?? "failed to save break settings");
   return res.json();
 }
+
+// ---- TermLens ----
+
+export interface ScanClause {
+  title: string;
+  original: string;
+  plainEnglish: string;
+  risk: "low" | "medium" | "high";
+  why: string;
+}
+
+export interface ScanResult {
+  id: string;
+  source: string;
+  createdAt: string;
+  summary: string;
+  overallRisk: "low" | "medium" | "high";
+  clauses: ScanClause[];
+}
+
+export async function runTermLensScan(text: string, sourceName: string, provider: string, model: string): Promise<ScanResult> {
+  const res = await request("/api/termlens/scan", { method: "POST", body: JSON.stringify({ text, sourceName, provider, model }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "scan failed");
+  return data;
+}
+
+export async function listScans(): Promise<any[]> {
+  const res = await request("/api/termlens/scans");
+  return (await res.json()).scans ?? [];
+}
+
+export async function getScan(id: string): Promise<any> {
+  const res = await request(`/api/termlens/scans/${id}`);
+  return res.json();
+}
+
+// ---- Projects / Files / Artifacts / CLI ----
+
+export interface Project {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export async function createProject(name: string): Promise<Project> {
+  const res = await request("/api/projects", { method: "POST", body: JSON.stringify({ name }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create project");
+  return data;
+}
+
+export async function listProjects(): Promise<Project[]> {
+  const res = await request("/api/projects");
+  return (await res.json()).projects ?? [];
+}
+
+export async function listProjectFiles(projectId: string): Promise<any[]> {
+  const res = await request(`/api/projects/${projectId}/files`);
+  return (await res.json()).files ?? [];
+}
+
+export async function uploadProjectFile(projectId: string, relPath: string, content: string) {
+  const res = await request(`/api/projects/${projectId}/files`, { method: "POST", body: JSON.stringify({ relPath, content }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to upload file");
+  return data;
+}
+
+export async function readProjectFile(projectId: string, relPath: string): Promise<string> {
+  const res = await request(`/api/projects/${projectId}/files/${relPath}`);
+  if (!res.ok) throw new Error((await res.json()).error ?? "failed to read file");
+  return res.text();
+}
+
+export async function listArtifacts(projectId: string): Promise<any[]> {
+  const res = await request(`/api/projects/${projectId}/artifacts`);
+  return (await res.json()).artifacts ?? [];
+}
+
+export async function createArtifact(projectId: string, name: string, content: string, createdByPane: string) {
+  const res = await request(`/api/projects/${projectId}/artifacts`, {
+    method: "POST",
+    body: JSON.stringify({ name, content, createdByPane }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create artifact");
+  return data;
+}
+
+export async function runCli(projectId: string, cmd: string, args: string[], cwd = ".") {
+  const res = await request(`/api/projects/${projectId}/cli/run`, { method: "POST", body: JSON.stringify({ cmd, args, cwd }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "command failed");
+  return data as { exitCode: number | null; stdout: string; stderr: string };
+}
+
+// ---- Board of Directors ----
+
+export interface BoardSeat {
+  adapterId: string;
+  model: string;
+  personaId?: string;
+}
+
+export async function runBoard(paneId: string, prompt: string, seats: BoardSeat[], chair: { adapterId: string; model: string }) {
+  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ paneId, prompt, seats, chair }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "board run failed");
+  return data as { threadId: string; seats: any[]; synthesis: string };
+}
+
+// ---- Goals / PM ----
+
+export async function createGoal(projectId: string, title: string) {
+  const res = await request(`/api/projects/${projectId}/goals`, { method: "POST", body: JSON.stringify({ title }) });
+  return res.json();
+}
+
+export async function listGoals(projectId: string): Promise<any[]> {
+  const res = await request(`/api/projects/${projectId}/goals`);
+  return (await res.json()).goals ?? [];
+}
+
+export async function setGoalStatus(goalId: string, status: string) {
+  return request(`/api/goals/${goalId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+}
+
+export async function createStep(goalId: string, title: string) {
+  const res = await request(`/api/goals/${goalId}/steps`, { method: "POST", body: JSON.stringify({ title }) });
+  return res.json();
+}
+
+export async function setStepStatus(stepId: string, status: string) {
+  return request(`/api/steps/${stepId}`, { method: "PATCH", body: JSON.stringify({ status }) });
+}
+
+// ---- Cost dashboard ----
+
+export async function getCostSummary(days = 7): Promise<any> {
+  const res = await request(`/api/cost/summary?days=${days}`);
+  return res.json();
+}
+
+// ---- Memory query ----
+
+export async function queryMemory(q: string): Promise<{ query: string; hits: { source: string; snippet: string; score: number }[] }> {
+  const res = await request(`/api/memory/query?q=${encodeURIComponent(q)}`);
+  return res.json();
+}

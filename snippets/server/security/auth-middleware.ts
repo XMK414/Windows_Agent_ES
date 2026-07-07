@@ -45,11 +45,25 @@ export function requireAuth(config: AuthConfig) {
   };
 }
 
-/** No wildcard CORS — the server only ever serves its own bundled UI origin. */
+/**
+ * No wildcard CORS — the server only ever serves its own bundled UI origin.
+ * Credentials must be explicitly allowed (browsers reject `include`-mode
+ * requests otherwise) and the preflight OPTIONS request must be answered
+ * here, before it ever reaches requireAuth — a preflight carries no
+ * Authorization header, so letting it fall through would 401 every
+ * cross-origin call the browser makes.
+ */
 export function localOnlyCors(allowedOrigin: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
     res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, x-waes-csrf");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
     next();
   };
 }
