@@ -4,23 +4,23 @@ import { getBreakSettings, setBreakSettings, type BreakSettings } from "./api";
 type ExerciseCategory = "breathing" | "neck" | "full-body-scan" | "meditation";
 
 const EXERCISES: Record<ExerciseCategory, { label: string; options: { label: string; minutes?: number }[] }> = {
-  breathing: { label: "Breathing", options: [{ label: "Destress" }, { label: "Refresh" }, { label: "Box" }, { label: "Relax" }] },
-  neck: { label: "Neck Exercise", options: [{ label: "Unwind" }, { label: "Pain Relief" }, { label: "Loosen Up" }] },
+  breathing: { label: "Breathing", options: [{ label: "Calm Down" }, { label: "Reset" }, { label: "Box Breath" }, { label: "Ease Off" }] },
+  neck: { label: "Neck Exercise", options: [{ label: "Release" }, { label: "Soothe" }, { label: "Stretch Out" }] },
   "full-body-scan": {
     label: "Full Body Scan",
     options: [
-      { label: "Body Check", minutes: 8 },
-      { label: "Head-to-Toe", minutes: 9 },
-      { label: "Deep Awareness", minutes: 12 },
-      { label: "Inner Body", minutes: 16 },
+      { label: "Quick Scan", minutes: 6 },
+      { label: "Top to Bottom", minutes: 10 },
+      { label: "Deep Focus", minutes: 11 },
+      { label: "Full Scan", minutes: 14 },
     ],
   },
-  meditation: { label: "Meditation", options: [{ label: "Quick Reset", minutes: 5 }, { label: "Deep Focus", minutes: 15 }] },
+  meditation: { label: "Meditation", options: [{ label: "Short Pause", minutes: 4 }, { label: "Long Session", minutes: 13 }] },
 };
 
 function BreakModal({ onDismiss }: { onDismiss: () => void }) {
   const [category, setCategory] = useState<ExerciseCategory | null>(null);
-  const [voice, setVoice] = useState<"Emma" | "Alex">("Emma");
+  const [voice, setVoice] = useState<"Wren" | "Sage">("Wren");
 
   return (
     <div className="waes-modal-backdrop" onClick={onDismiss}>
@@ -52,7 +52,7 @@ function BreakModal({ onDismiss }: { onDismiss: () => void }) {
             </div>
             <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.7 }}>Voice Guide</div>
             <div style={{ display: "flex", gap: 8 }}>
-              {(["Emma", "Alex"] as const).map((v) => (
+              {(["Wren", "Sage"] as const).map((v) => (
                 <button
                   key={v}
                   className="waes-button"
