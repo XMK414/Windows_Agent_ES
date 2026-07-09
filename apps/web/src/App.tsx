@@ -17,6 +17,7 @@ function SettingsBar() {
   const [token, setToken] = useState("");
   const [anthropicKey, setAnthropicKey] = useState("");
   const [googleKey, setGoogleKey] = useState("");
+  const [openrouterKey, setOpenrouterKey] = useState("");
   const [status, setStatus] = useState<string>("");
 
   function saveToken() {
@@ -54,9 +55,24 @@ function SettingsBar() {
     }
   }
 
+  async function saveOpenrouterKey() {
+    try {
+      const res = await setSecret("openrouter_api_key", openrouterKey);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setStatus(`Failed to save OpenRouter key: ${data.error ?? res.status}`);
+        return;
+      }
+      setOpenrouterKey("");
+      setStatus("OpenRouter key stored in the server-side vault.");
+    } catch (err) {
+      setStatus(`Failed to save OpenRouter key: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   async function checkStatus() {
     const s = await getStatus();
-    setStatus(`Anthropic configured: ${s.anthropicConfigured} · Google configured: ${s.googleConfigured}`);
+    setStatus(`Anthropic: ${s.anthropicConfigured} · Google: ${s.googleConfigured} · OpenRouter: ${s.openrouterConfigured}`);
   }
 
   return (
@@ -67,6 +83,8 @@ function SettingsBar() {
       <button onClick={saveAnthropicKey}>Set</button>
       <input placeholder="Google API key" value={googleKey} onChange={(e) => setGoogleKey(e.target.value)} type="password" />
       <button onClick={saveGoogleKey}>Set</button>
+      <input placeholder="OpenRouter API key" value={openrouterKey} onChange={(e) => setOpenrouterKey(e.target.value)} type="password" />
+      <button onClick={saveOpenrouterKey}>Set</button>
       <button onClick={checkStatus}>Check status</button>
       <span style={{ fontSize: 12, opacity: 0.8 }}>{status}</span>
     </div>

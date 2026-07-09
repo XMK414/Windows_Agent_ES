@@ -18,7 +18,8 @@ export function registerRoutes(app: Express, deps: RouteDeps): void {
   app.get("/api/status", async (_req, res) => {
     const anthropicConfigured = Boolean(await vault.get("anthropic_api_key"));
     const googleConfigured = Boolean(await vault.get("google_api_key"));
-    res.json({ anthropicConfigured, googleConfigured, auditChainValid: auditLog.verifyChain() });
+    const openrouterConfigured = Boolean(await vault.get("openrouter_api_key"));
+    res.json({ anthropicConfigured, googleConfigured, openrouterConfigured, auditChainValid: auditLog.verifyChain() });
   });
 
   // Never echoes the key back and never logs it — only records that a key

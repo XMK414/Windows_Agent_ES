@@ -15,6 +15,16 @@ const RATES: Record<string, Rate> = {
   "claude-haiku-4-5-20251001": { inputCentsPerMillion: 100, outputCentsPerMillion: 500 },
   "gemini-2.5-pro": { inputCentsPerMillion: 125, outputCentsPerMillion: 500 },
   "gemini-2.5-flash": { inputCentsPerMillion: 30, outputCentsPerMillion: 120 },
+  // OpenRouter models (rates approximate, quoted per the upstream provider).
+  "openai/gpt-4o": { inputCentsPerMillion: 250, outputCentsPerMillion: 1000 },
+  "openai/gpt-4o-mini": { inputCentsPerMillion: 15, outputCentsPerMillion: 60 },
+  "openai/o1": { inputCentsPerMillion: 1500, outputCentsPerMillion: 6000 },
+  "anthropic/claude-3.7-sonnet": { inputCentsPerMillion: 300, outputCentsPerMillion: 1500 },
+  "google/gemini-2.5-pro": { inputCentsPerMillion: 125, outputCentsPerMillion: 500 },
+  "meta-llama/llama-3.3-70b-instruct": { inputCentsPerMillion: 12, outputCentsPerMillion: 30 },
+  "deepseek/deepseek-chat": { inputCentsPerMillion: 14, outputCentsPerMillion: 28 },
+  "mistralai/mistral-large": { inputCentsPerMillion: 200, outputCentsPerMillion: 600 },
+  "x-ai/grok-2": { inputCentsPerMillion: 200, outputCentsPerMillion: 1000 },
 };
 
 const DEFAULT_RATE: Rate = { inputCentsPerMillion: 300, outputCentsPerMillion: 1500 };

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { runBoard, type BoardSeat } from "./api";
+import { ModelPicker } from "./ModelPicker";
+import { providerLabel } from "./models";
 
 const DEFAULT_SEATS: BoardSeat[] = [
   { adapterId: "anthropic-api", model: "claude-sonnet-5", personaId: "persona/skeptical-reviewer" },
@@ -54,18 +56,18 @@ export function BoardPanel() {
         />
 
         {seats.map((seat, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-            <select className="waes-select" value={seat.adapterId} onChange={(e) => updateSeat(i, { adapterId: e.target.value })}>
-              <option value="anthropic-api">Anthropic</option>
-              <option value="google-api">Google</option>
-            </select>
-            <input className="waes-input" value={seat.model} onChange={(e) => updateSeat(i, { model: e.target.value })} style={{ width: 180 }} />
+          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <ModelPicker
+              adapterId={seat.adapterId}
+              model={seat.model}
+              onChange={(patch) => updateSeat(i, patch)}
+            />
             <input
               className="waes-input"
               placeholder="persona/... (optional)"
               value={seat.personaId ?? ""}
               onChange={(e) => updateSeat(i, { personaId: e.target.value || undefined })}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 140 }}
             />
             <button className="waes-button" onClick={() => removeSeat(i)}>
               Remove
@@ -76,13 +78,16 @@ export function BoardPanel() {
           Add seat
         </button>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, opacity: 0.7 }}>Chair:</span>
-          <select className="waes-select" value={chairAdapter} onChange={(e) => setChairAdapter(e.target.value)}>
-            <option value="anthropic-api">Anthropic</option>
-            <option value="google-api">Google</option>
-          </select>
-          <input className="waes-input" value={chairModel} onChange={(e) => setChairModel(e.target.value)} style={{ width: 180 }} />
+          <ModelPicker
+            adapterId={chairAdapter}
+            model={chairModel}
+            onChange={(patch) => {
+              if (patch.adapterId !== undefined) setChairAdapter(patch.adapterId);
+              if (patch.model !== undefined) setChairModel(patch.model);
+            }}
+          />
         </div>
 
         <button className="waes-button" onClick={run} disabled={busy}>
@@ -97,7 +102,7 @@ export function BoardPanel() {
           {result.seats.map((s, i) => (
             <div key={i} style={{ borderTop: "1px solid var(--waes-glass-border)", padding: "8px 0", fontSize: 13 }}>
               <b>
-                Seat {i + 1} ({s.adapterId}/{s.model}
+                Seat {i + 1} ({providerLabel(s.adapterId)}/{s.model}
                 {s.personaId ? `, ${s.personaId}` : ""}) {!s.ok && <span className="waes-badge warn">error</span>}
               </b>
               <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{s.content}</div>

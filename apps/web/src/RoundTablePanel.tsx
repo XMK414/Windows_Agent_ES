@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { createRoundtableThread, takeRoundtableTurn, type RoundtableSpeaker } from "./api";
+import { ModelPicker } from "./ModelPicker";
 
 interface Participant {
   id: string;
@@ -17,6 +18,8 @@ const DEFAULT_PARTICIPANTS: Participant[] = [
   { id: "gemini-1", label: "Gemini", kind: "llm", adapterId: "google-api", model: "gemini-2.5-flash", enabled: true },
   { id: "you", label: "You", kind: "user", enabled: true },
 ];
+
+let seatCounter = 0;
 
 interface TranscriptEntry {
   speaker: string;
@@ -46,6 +49,25 @@ export function RoundTablePanel() {
 
   function updateParticipant(id: string, patch: Partial<Participant>) {
     setParticipants((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  }
+
+  function addLlmParticipant() {
+    seatCounter += 1;
+    setParticipants((ps) => [
+      ...ps,
+      {
+        id: `seat-${Date.now()}-${seatCounter}`,
+        label: `Seat ${ps.filter((p) => p.kind === "llm").length + 1}`,
+        kind: "llm",
+        adapterId: "openrouter",
+        model: "openai/gpt-4o",
+        enabled: true,
+      },
+    ]);
+  }
+
+  function removeParticipant(id: string) {
+    setParticipants((ps) => ps.filter((p) => p.id !== id));
   }
 
   function enabledList(): Participant[] {
@@ -147,20 +169,31 @@ export function RoundTablePanel() {
         </p>
 
         {participants.map((p) => (
-          <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, fontSize: 13 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 140 }}>
+          <div key={p.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6, fontSize: 13, flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 150 }}>
               <input type="checkbox" checked={p.enabled} onChange={(e) => updateParticipant(p.id, { enabled: e.target.checked })} disabled={running || waitingOnUser} />
-              {p.label}
-              {p.kind === "user" && <span className="waes-badge" style={{ marginLeft: 4 }}>{p.enabled ? "in" : "sitting out"}</span>}
+              {p.kind === "llm" ? (
+                <input
+                  className="waes-input"
+                  value={p.label}
+                  onChange={(e) => updateParticipant(p.id, { label: e.target.value })}
+                  disabled={running}
+                  style={{ width: 120 }}
+                />
+              ) : (
+                <>
+                  {p.label}
+                  <span className="waes-badge" style={{ marginLeft: 4 }}>{p.enabled ? "in" : "sitting out"}</span>
+                </>
+              )}
             </label>
             {p.kind === "llm" && (
               <>
-                <input
-                  className="waes-input"
-                  value={p.model}
-                  onChange={(e) => updateParticipant(p.id, { model: e.target.value })}
+                <ModelPicker
+                  adapterId={p.adapterId ?? "anthropic-api"}
+                  model={p.model ?? ""}
+                  onChange={(patch) => updateParticipant(p.id, patch)}
                   disabled={running}
-                  style={{ width: 180 }}
                 />
                 <input
                   className="waes-input"
@@ -168,12 +201,19 @@ export function RoundTablePanel() {
                   value={p.personaId ?? ""}
                   onChange={(e) => updateParticipant(p.id, { personaId: e.target.value || undefined })}
                   disabled={running}
-                  style={{ width: 200 }}
+                  style={{ width: 180 }}
                 />
+                <button className="waes-button" onClick={() => removeParticipant(p.id)} disabled={running}>
+                  Remove
+                </button>
               </>
             )}
           </div>
         ))}
+
+        <button className="waes-button" onClick={addLlmParticipant} disabled={running} style={{ marginTop: 4 }}>
+          Add model
+        </button>
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
           <input className="waes-input" placeholder="Topic to open with (optional)" value={topic} onChange={(e) => setTopic(e.target.value)} disabled={!!threadId} style={{ flex: 1 }} />
