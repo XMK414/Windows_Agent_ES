@@ -25,15 +25,33 @@ function SettingsBar() {
   }
 
   async function saveAnthropicKey() {
-    await setSecret("anthropic_api_key", anthropicKey);
-    setAnthropicKey("");
-    setStatus("Anthropic key stored in the server-side vault.");
+    try {
+      const res = await setSecret("anthropic_api_key", anthropicKey);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setStatus(`Failed to save Anthropic key: ${data.error ?? res.status}`);
+        return;
+      }
+      setAnthropicKey("");
+      setStatus("Anthropic key stored in the server-side vault.");
+    } catch (err) {
+      setStatus(`Failed to save Anthropic key: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function saveGoogleKey() {
-    await setSecret("google_api_key", googleKey);
-    setGoogleKey("");
-    setStatus("Google key stored in the server-side vault.");
+    try {
+      const res = await setSecret("google_api_key", googleKey);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setStatus(`Failed to save Google key: ${data.error ?? res.status}`);
+        return;
+      }
+      setGoogleKey("");
+      setStatus("Google key stored in the server-side vault.");
+    } catch (err) {
+      setStatus(`Failed to save Google key: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   async function checkStatus() {
