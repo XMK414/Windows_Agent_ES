@@ -310,13 +310,32 @@ export interface BoardSeat {
   adapterId: string;
   model: string;
   personaId?: string;
+  systemPrompt?: string;
+  label?: string;
 }
 
-export async function runBoard(paneId: string, prompt: string, seats: BoardSeat[], chair: { adapterId: string; model: string }) {
-  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ paneId, prompt, seats, chair }) });
+export interface BoardResult {
+  threadId: string;
+  board: any[];
+  reviews: any[];
+  verdict: string;
+  nextStep: string | null;
+  /** Aliases kept for backward compatibility. */
+  seats: any[];
+  synthesis: string;
+}
+
+export async function runBoard(
+  paneId: string,
+  prompt: string,
+  seats: BoardSeat[],
+  chair: { adapterId: string; model: string },
+  peerReview = false,
+): Promise<BoardResult> {
+  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ paneId, prompt, seats, chair, peerReview }) });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "board run failed");
-  return data as { threadId: string; seats: any[]; synthesis: string };
+  return data as BoardResult;
 }
 
 // ---- Goals / PM ----
