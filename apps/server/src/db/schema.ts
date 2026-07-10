@@ -66,7 +66,34 @@ CREATE TABLE IF NOT EXISTS scans (
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  description TEXT,
+  phase TEXT NOT NULL DEFAULT 'DISCOVERY', -- DISCOVERY|ARCHITECTURE|CONSTRUCTION|VERIFY_QUALITY|SHIP
+  started_at TEXT,
   created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_log (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  entry TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+-- A context set is a named, swappable bundle of prompt/rules/restraints/plan.md
+-- notes. project_id NULL = a global/template-derived set; per project, at most
+-- one set is active (swapped in) at a time.
+CREATE TABLE IF NOT EXISTS context_sets (
+  id TEXT PRIMARY KEY,
+  project_id TEXT,
+  name TEXT NOT NULL,
+  prompt TEXT,
+  rules TEXT,
+  restraints TEXT,
+  plan_md TEXT,
+  notes TEXT,
+  active INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS threads (

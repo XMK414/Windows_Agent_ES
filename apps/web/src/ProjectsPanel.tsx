@@ -13,11 +13,134 @@ import {
   setGoalStatus,
   createStep,
   setStepStatus,
+  getProject,
+  updateProject,
+  listProjectLog,
+  addProjectLog,
+  PROJECT_PHASES,
   type Project,
+  type ProjectPhase,
+  type ProjectLogEntry,
 } from "./api";
 
-type SubTab = "files" | "artifacts" | "cli" | "goals";
+type SubTab = "overview" | "files" | "artifacts" | "cli" | "goals";
 const STATUSES = ["todo", "doing", "blocked", "done"] as const;
+
+const PHASE_LABELS: Record<ProjectPhase, string> = {
+  DISCOVERY: "1 · Discovery",
+  ARCHITECTURE: "2 · Architecture",
+  CONSTRUCTION: "3 · Construction",
+  VERIFY_QUALITY: "4 · Verify Quality",
+  SHIP: "5 · Ship",
+};
+
+function OverviewTab({ projectId }: { projectId: string }) {
+  const [project, setProject] = useState<Project | null>(null);
+  const [log, setLog] = useState<ProjectLogEntry[]>([]);
+  const [description, setDescription] = useState("");
+  const [entry, setEntry] = useState("");
+  const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      const p = await getProject(projectId);
+      setProject(p);
+      setDescription(p.description ?? "");
+      setLog(await listProjectLog(projectId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  async function saveDescription() {
+    setError(null);
+    try {
+      await updateProject(projectId, { description });
+      setSaved("Description saved");
+      setTimeout(() => setSaved(null), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function changePhase(phase: ProjectPhase) {
+    setError(null);
+    try {
+      await updateProject(projectId, { phase });
+      setProject((p) => (p ? { ...p, phase } : p));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function addEntry() {
+    if (!entry.trim()) return;
+    setError(null);
+    try {
+      await addProjectLog(projectId, entry);
+      setEntry("");
+      setLog(await listProjectLog(projectId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (!project) return <div className="glass-card">{error ? <span style={{ color: "#ffb2a3" }}>{error}</span> : "Loading..."}</div>;
+
+  return (
+    <div className="glass-card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <h3 style={{ margin: 0 }}>{project.name}</h3>
+        <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+          Phase
+          <select className="waes-select" value={project.phase ?? "DISCOVERY"} onChange={(e) => changePhase(e.target.value as ProjectPhase)}>
+            {PROJECT_PHASES.map((p) => (
+              <option key={p} value={p}>
+                {PHASE_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>
+        Started {project.started_at ? new Date(project.started_at).toLocaleDateString() : new Date(project.created_at).toLocaleDateString()}
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Description</div>
+        <textarea className="waes-input" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: "100%", height: 70 }} placeholder="What is this project?" />
+        <button className="waes-button" onClick={saveDescription} style={{ marginTop: 6 }}>
+          Save description
+        </button>
+        {saved && <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 8 }}>{saved}</span>}
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Work log</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="waes-input" placeholder="What did you do this session?" value={entry} onChange={(e) => setEntry(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addEntry()} style={{ flex: 1 }} />
+          <button className="waes-button" onClick={addEntry}>
+            Log it
+          </button>
+        </div>
+        {log.map((l) => (
+          <div key={l.id} style={{ borderTop: "1px solid var(--waes-glass-border)", padding: "6px 0", fontSize: 13 }}>
+            <span style={{ opacity: 0.55, fontSize: 11 }}>{new Date(l.created_at).toLocaleString()}</span>
+            <div>{l.entry}</div>
+          </div>
+        ))}
+        {log.length === 0 && <div style={{ fontSize: 12, opacity: 0.5, marginTop: 6 }}>No entries yet.</div>}
+      </div>
+
+      {error && <div style={{ color: "#ffb2a3", fontSize: 12, marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
 
 function FilesTab({ projectId }: { projectId: string }) {
   const [files, setFiles] = useState<any[]>([]);
@@ -253,7 +376,7 @@ export function ProjectsPanel() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
-  const [subTab, setSubTab] = useState<SubTab>("files");
+  const [subTab, setSubTab] = useState<SubTab>("overview");
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
@@ -311,12 +434,13 @@ export function ProjectsPanel() {
       {selected && (
         <>
           <div className="waes-tabs" style={{ padding: 0 }}>
-            {(["files", "artifacts", "cli", "goals"] as SubTab[]).map((t) => (
+            {(["overview", "files", "artifacts", "cli", "goals"] as SubTab[]).map((t) => (
               <button key={t} className={`waes-tab${subTab === t ? " active" : ""}`} onClick={() => setSubTab(t)}>
                 {t[0].toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
+          {subTab === "overview" && <OverviewTab projectId={selected} />}
           {subTab === "files" && <FilesTab projectId={selected} />}
           {subTab === "artifacts" && <ArtifactsTab projectId={selected} />}
           {subTab === "cli" && <CliTab projectId={selected} />}

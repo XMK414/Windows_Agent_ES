@@ -28,6 +28,7 @@ import { registerJobRoutes } from "./routes/jobs.js";
 import { registerWebSessionRoutes } from "./routes/web-session.js";
 import { registerMacroRoutes } from "./routes/macros.js";
 import { registerRoundtableRoutes } from "./routes/roundtable.js";
+import { registerContextSetRoutes } from "./routes/context-sets.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -117,6 +118,7 @@ registerMemoryRoutes(app, { vaultDir: VAULT_DIR, projectsDir: PROJECTS_DIR, libr
 registerTermLensRoutes(app, { db, providers, contextResolver, vaultDir: VAULT_DIR, auditLog });
 registerMacroRoutes(app, { db, providers, library: libraryIndex, contextResolver, auditLog });
 registerRoundtableRoutes(app, { db, providers, contextResolver, auditLog });
+registerContextSetRoutes(app, { db });
 registerToolRoutes(app, { db });
 registerStackRoutes(app, { db });
 registerBreakRoutes(app, { db });

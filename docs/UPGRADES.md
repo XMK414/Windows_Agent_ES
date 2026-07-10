@@ -64,18 +64,21 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
 
 ## Phase 3 — Projects (save + detail)
 
-- [ ] Project detail view: Description, Date Started, and a work-log (each entry
-      = date + brief of what was done).
-- [ ] Phase label per project: Discovery → Architecture → Construction →
+- [x] Project detail view (Overview tab): Description, Date Started, and a
+      work-log (each entry = date + brief of what was done).
+- [x] Phase label per project: Discovery → Architecture → Construction →
       Verify Quality → Ship.
-- [ ] Server: `description`, `phase`, `started_at` columns + `project_log` table
-      + routes. Tests for log append and phase transitions.
+- [x] Server: `description`, `phase`, `started_at` columns (+ idempotent
+      migration for existing DBs) + `project_log` table + routes. Tests for
+      phase validation.
 
 ## Phase 4 — Macros (templates + per-project swappable sets)
 
-- [ ] Saved prompts, rules, restraints, `.md` files, and a `plan.md` template
-      notepad; multiple named setups selectable + injectable; per-project saved
-      version that's swappable. Starter templates for each type.
+- [x] Context sets: named, swappable bundles of prompt · rules · restraints ·
+      plan.md · notes, scopable to a project with one active at a time, seeded
+      from starter templates (Blank, Product build partner, Research, Content
+      ops). Full CRUD + activate, editor UI, plus the existing saved-prompt
+      runner. Store logic unit-tested with an in-memory DB.
 
 ## Phase 5 — Cost analytics (live usage + floating widget)
 

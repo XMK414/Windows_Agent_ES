@@ -246,9 +246,15 @@ export async function getScan(id: string): Promise<any> {
 
 // ---- Projects / Files / Artifacts / CLI ----
 
+export const PROJECT_PHASES = ["DISCOVERY", "ARCHITECTURE", "CONSTRUCTION", "VERIFY_QUALITY", "SHIP"] as const;
+export type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
 export interface Project {
   id: string;
   name: string;
+  description?: string | null;
+  phase?: ProjectPhase;
+  started_at?: string | null;
   created_at: string;
 }
 
@@ -261,7 +267,101 @@ export async function createProject(name: string): Promise<Project> {
 
 export async function listProjects(): Promise<Project[]> {
   const res = await request("/api/projects");
-  return (await res.json()).projects ?? [];
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to list projects");
+  return data.projects ?? [];
+}
+
+export async function getProject(id: string): Promise<Project> {
+  const res = await request(`/api/projects/${id}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to load project");
+  return data.project;
+}
+
+export async function updateProject(id: string, patch: { description?: string; phase?: ProjectPhase }) {
+  const res = await request(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update project");
+  return data;
+}
+
+export interface ProjectLogEntry {
+  id: string;
+  entry: string;
+  created_at: string;
+}
+
+export async function listProjectLog(id: string): Promise<ProjectLogEntry[]> {
+  const res = await request(`/api/projects/${id}/log`);
+  return (await res.json()).entries ?? [];
+}
+
+export async function addProjectLog(id: string, entry: string) {
+  const res = await request(`/api/projects/${id}/log`, { method: "POST", body: JSON.stringify({ entry }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to add log entry");
+  return data;
+}
+
+// ---- Context sets (Macros) ----
+
+export interface ContextSet {
+  id: string;
+  project_id: string | null;
+  name: string;
+  prompt: string;
+  rules: string;
+  restraints: string;
+  plan_md: string;
+  notes: string;
+  active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContextSetTemplate {
+  name: string;
+  prompt: string;
+  rules: string;
+  restraints: string;
+  plan_md: string;
+  notes: string;
+}
+
+export async function listContextSets(projectId?: string): Promise<ContextSet[]> {
+  const res = await request(`/api/context-sets${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ""}`);
+  return (await res.json()).sets ?? [];
+}
+
+export async function listContextSetTemplates(): Promise<ContextSetTemplate[]> {
+  const res = await request(`/api/context-sets/templates`);
+  return (await res.json()).templates ?? [];
+}
+
+export async function createContextSet(input: Partial<ContextSet> & { name: string; projectId?: string | null }): Promise<ContextSet> {
+  const res = await request(`/api/context-sets`, { method: "POST", body: JSON.stringify(input) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create set");
+  return data.set;
+}
+
+export async function updateContextSet(id: string, patch: Partial<ContextSet>): Promise<ContextSet> {
+  const res = await request(`/api/context-sets/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update set");
+  return data.set;
+}
+
+export async function activateContextSet(id: string): Promise<ContextSet> {
+  const res = await request(`/api/context-sets/${id}/activate`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to activate set");
+  return data.set;
+}
+
+export async function deleteContextSet(id: string) {
+  return request(`/api/context-sets/${id}`, { method: "DELETE" });
 }
 
 export async function listProjectFiles(projectId: string): Promise<any[]> {
