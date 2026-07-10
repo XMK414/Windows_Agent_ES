@@ -50,6 +50,19 @@ export const PROVIDERS: ProviderInfo[] = [
       { id: "x-ai/grok-2", label: "xAI Grok 2" },
     ],
   },
+  {
+    // ChatGPT via OAuth. Allowed for running/advisory work (Round Table, Board,
+    // Chat) but not for building a product — the server blocks it on the
+    // macros/jobs surfaces.
+    id: "chatgpt-oauth",
+    label: "ChatGPT (OAuth)",
+    allowCustomModel: true,
+    models: [
+      { id: "gpt-4o", label: "GPT-4o" },
+      { id: "gpt-4o-mini", label: "GPT-4o mini" },
+      { id: "o1", label: "o1" },
+    ],
+  },
 ];
 
 export const PROVIDER_MAP: Record<string, ProviderInfo> = Object.fromEntries(

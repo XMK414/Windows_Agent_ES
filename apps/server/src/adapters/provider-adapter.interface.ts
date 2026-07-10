@@ -37,6 +37,13 @@ export interface StreamChunk {
 export interface ChatProvider {
   readonly id: string; // e.g. "anthropic-api" | "google-api" | "claude-web" | "gemini-web"
   readonly requiresApiKey: boolean;
+  /**
+   * When true, this provider must not be used on "building a product" surfaces
+   * (macros, scheduled jobs). Used for the ChatGPT-via-OAuth provider, which is
+   * allowed for running/advisory work (Round Table, Board, Chat) but not for
+   * building or designing a product, per the OpenAI no-compete policy.
+   */
+  readonly buildRestricted?: boolean;
   listModels(): Promise<ModelInfo[]>;
   send(req: ChatRequest): AsyncIterable<StreamChunk>;
 }

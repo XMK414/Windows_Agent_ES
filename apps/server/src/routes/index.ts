@@ -22,7 +22,8 @@ export function registerRoutes(app: Express, deps: RouteDeps): void {
       const anthropicConfigured = Boolean(await vault.get("anthropic_api_key"));
       const googleConfigured = Boolean(await vault.get("google_api_key"));
       const openrouterConfigured = Boolean(await vault.get("openrouter_api_key"));
-      res.json({ anthropicConfigured, googleConfigured, openrouterConfigured, auditChainValid: auditLog.verifyChain() });
+      const chatgptOauthConfigured = Boolean(await vault.get("chatgpt_oauth_token"));
+      res.json({ anthropicConfigured, googleConfigured, openrouterConfigured, chatgptOauthConfigured, auditChainValid: auditLog.verifyChain() });
     }),
   );
 

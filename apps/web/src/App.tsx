@@ -12,6 +12,7 @@ import { JobsPanel } from "./JobsPanel";
 import { MacroPanel } from "./MacroPanel";
 import { RoundTablePanel } from "./RoundTablePanel";
 import { VaultPanel } from "./VaultPanel";
+import { CostWidget } from "./CostWidget";
 import "./theme.css";
 
 function SettingsBar() {
@@ -122,6 +123,16 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("chat");
+  const [showCost, setShowCost] = useState<boolean>(() => localStorage.getItem("waes_cost_widget_hidden") !== "1");
+
+  function hideCostWidget() {
+    setShowCost(false);
+    localStorage.setItem("waes_cost_widget_hidden", "1");
+  }
+  function showCostWidget() {
+    setShowCost(true);
+    localStorage.removeItem("waes_cost_widget_hidden");
+  }
 
   return (
     <div className="waes-app" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -132,7 +143,13 @@ export default function App() {
             {TAB_LABELS[t]}
           </button>
         ))}
+        {!showCost && (
+          <button className="waes-tab" onClick={showCostWidget} title="Show the floating cost readout">
+            💸 Cost widget
+          </button>
+        )}
       </div>
+      {showCost && <CostWidget onClose={hideCostWidget} />}
       <div className="waes-panel" style={{ flex: 1, display: "flex" }}>
         {tab === "chat" && <ChatGrid />}
         {tab === "roundtable" && <RoundTablePanel />}

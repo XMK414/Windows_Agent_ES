@@ -192,24 +192,7 @@ export function VaultPanel() {
         </div>
       </div>
 
-      <div className="glass-card">
-        <h3>OAuth logins</h3>
-        <p style={{ fontSize: 12, opacity: 0.6, marginTop: -4 }}>
-          For running agents only (Round Table, Board, Hermes) — <b>never</b> for building or designing a product
-          (non-compete). Compliant use-cases:
-        </p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-          {OAUTH_COMPLIANT_SCOPES.map((s) => (
-            <span key={s} className="waes-badge">
-              {s}
-            </span>
-          ))}
-        </div>
-        <div style={{ fontSize: 12, opacity: 0.7 }}>
-          ChatGPT / other OAuth connections are scaffolded and awaiting the connection spec. Once wired, each credential
-          will carry a usage-scope flag enforcing the policy above.
-        </div>
-      </div>
+      <ChatGptOAuthSection configured={Boolean(status?.chatgptOauthConfigured)} onSaved={refreshStatus} />
 
       <div className="glass-card">
         <h3>MCP connectors</h3>
@@ -217,6 +200,72 @@ export function VaultPanel() {
           Connectors are locked in and routed server-side. Inventory + per-connector routing UI is the next slice.
         </p>
       </div>
+    </div>
+  );
+}
+
+function ChatGptOAuthSection({ configured, onSaved }: { configured: boolean; onSaved: () => void }) {
+  const [token, setToken] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [state, setState] = useState<string | null>(null);
+
+  async function save() {
+    setState(null);
+    if (!token && !baseUrl) return;
+    try {
+      if (token) {
+        const r = await setSecret("chatgpt_oauth_token", token);
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `status ${r.status}`);
+      }
+      if (baseUrl) {
+        const r = await setSecret("chatgpt_oauth_base_url", baseUrl);
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `status ${r.status}`);
+      }
+      setToken("");
+      setState("Saved");
+      onSaved();
+    } catch (err) {
+      setState(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  return (
+    <div className="glass-card">
+      <h3>OAuth logins — ChatGPT {configured && <span className="waes-badge">set</span>}</h3>
+      <p style={{ fontSize: 12, opacity: 0.6, marginTop: -4 }}>
+        For running agents only (Round Table, Board, Chat, Hermes) — <b>never</b> for building or designing a product
+        (non-compete). The server blocks this credential on the Macros and Jobs surfaces. Compliant use-cases:
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+        {OAUTH_COMPLIANT_SCOPES.map((s) => (
+          <span key={s} className="waes-badge">
+            {s}
+          </span>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 8 }}>
+        A ChatGPT session token does not authenticate against api.openai.com. Point the endpoint at the URL that accepts
+        your credential (your OAuth token endpoint or bridge).
+      </div>
+      <input
+        className="waes-input"
+        type="password"
+        placeholder="ChatGPT OAuth / session token"
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        style={{ width: "100%", marginBottom: 6 }}
+      />
+      <input
+        className="waes-input"
+        placeholder="OpenAI-compatible endpoint (e.g. https://your-bridge/v1)"
+        value={baseUrl}
+        onChange={(e) => setBaseUrl(e.target.value)}
+        style={{ width: "100%", marginBottom: 8 }}
+      />
+      <button className="waes-button" onClick={save} disabled={!token && !baseUrl}>
+        Save
+      </button>
+      {state && <span style={{ fontSize: 12, opacity: 0.7, marginLeft: 8 }}>{state}</span>}
     </div>
   );
 }

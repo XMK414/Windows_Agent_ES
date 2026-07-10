@@ -54,11 +54,12 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
       (`!@#$%^&*=+`). Shared policy util with tests.
 - [x] Secret slots for Anthropic, Google, OpenRouter + **blank custom slots**
       (add-your-own name/value) for keys to be found later.
-- [ ] OAuth section (ChatGPT/others) — **needs the examples file** referenced in
-      the request; scaffolded with a clear "awaiting spec" state. Policy note:
-      OAuth usable for inference in Round Table / Board / Hermes agents, **never**
-      for building/designing a product (non-compete). Enforced by a usage-scope
-      flag on each OAuth credential.
+- [x] OAuth — ChatGPT via OAuth: `chatgpt-oauth` provider (OpenAI-compatible,
+      configurable endpoint since a ChatGPT session token doesn't authenticate
+      against api.openai.com), stored token + endpoint in the vault, selectable
+      in Round Table / Board / Chat. `buildRestricted` flag enforced — the
+      server refuses it on the Macros and Jobs (product-building) surfaces.
+      Tests cover the flag.
 - [ ] MCP connectors: list, lock-in, and route. Depends on connector inventory.
 
 ## Phase 3 — Projects (save + detail)
@@ -79,9 +80,11 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
 ## Phase 5 — Cost analytics (live usage + floating widget)
 
 - [ ] Live account usage pulls for Anthropic + Google (in addition to the local
-      API-cost ledger) on the main Cost screen.
-- [ ] A small always-visible cost readout on any screen that makes calls —
-      movable, resizable, adjustable transparency (or a thin sidebar).
+      API-cost ledger) on the main Cost screen. (Deferred — needs per-provider
+      console OAuth/scraping; not exposed via the API key.)
+- [x] A small always-visible cost readout on any screen that makes calls —
+      floating `CostWidget`, draggable, resizable (CSS resize), adjustable
+      transparency, collapsible, app-wide with a show/hide toggle.
 
 ## Phase 6 — Break Timer (deferred, needs research)
 

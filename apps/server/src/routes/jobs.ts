@@ -4,6 +4,7 @@ import * as cron from "node-cron";
 import { v4 as uuid } from "uuid";
 import type { ChatProvider } from "../adapters/provider-adapter.interface.js";
 import type { JobScheduler } from "../jobs/scheduler.js";
+import { isBuildRestricted, BUILD_RESTRICTED_MESSAGE } from "../adapters/build-restriction.js";
 
 export function registerJobRoutes(app: Express, deps: { db: Database.Database; providers: Map<string, ChatProvider>; scheduler: JobScheduler }): void {
   const { db, providers, scheduler } = deps;
@@ -27,6 +28,7 @@ export function registerJobRoutes(app: Express, deps: { db: Database.Database; p
     if (!provider.requiresApiKey) {
       return res.status(400).json({ error: "scheduled jobs may only use API-key adapters, never a web-session adapter" });
     }
+    if (isBuildRestricted(provider)) return res.status(403).json({ error: BUILD_RESTRICTED_MESSAGE });
 
     const id = uuid();
     db.prepare(
