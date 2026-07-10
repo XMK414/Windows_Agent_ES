@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { AuditLog } from "./security/audit-log.js";
 import { FileSecretsVault } from "./security/secrets-vault.js";
-import { generateInstallToken, requireAuth, localOnlyCors } from "./security/auth-middleware.js";
+import { generateInstallToken, requireAuth, localOnlyCors, buildCorsAllowList } from "./security/auth-middleware.js";
 import { openDb } from "./db/index.js";
 import { registerRoutes } from "./routes/index.js";
 import { registerThreadRoutes } from "./routes/threads.js";
@@ -39,7 +39,7 @@ const DATA_DIR = path.resolve(process.cwd(), "data");
 const PROJECTS_DIR = path.join(DATA_DIR, "projects");
 const VAULT_DIR = path.join(DATA_DIR, "vault");
 const BROWSER_PROFILES_DIR = path.join(DATA_DIR, "browser-profiles");
-const WEB_ORIGIN = process.env.WAES_WEB_ORIGIN ?? "http://127.0.0.1:5173";
+const CORS_ALLOW_LIST = buildCorsAllowList();
 const PORT = Number(process.env.WAES_PORT ?? 8787);
 
 mkdirSync(DATA_DIR, { recursive: true });
@@ -78,7 +78,7 @@ const vault = new FileSecretsVault(path.join(DATA_DIR, "secrets.vault"), async (
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
-app.use(localOnlyCors(WEB_ORIGIN));
+app.use(localOnlyCors(CORS_ALLOW_LIST));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
@@ -125,6 +125,15 @@ const jobScheduler = new JobScheduler(db, providers, libraryIndex, VAULT_DIR, au
 jobScheduler.start();
 registerJobRoutes(app, { db, providers, scheduler: jobScheduler });
 registerWebSessionRoutes(app, { providers, auditLog });
+
+// Last-resort error handler: without this an async route that throws (e.g. a
+// vault call with no passphrase set) leaves the request hanging, which the
+// browser surfaces as an opaque "Failed to fetch". Turn it into a real 500.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error("Unhandled route error:", message);
+  if (!res.headersSent) res.status(500).json({ error: message });
+});
 
 app.listen(PORT, "127.0.0.1", () => {
   // Printed once per run so the operator can copy it into the UI's login

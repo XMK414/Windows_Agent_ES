@@ -254,22 +254,33 @@ export function ProjectsPanel() {
   const [selected, setSelected] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [subTab, setSubTab] = useState<SubTab>("files");
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
-    const list = await listProjects();
-    setProjects(list);
-    if (!selected && list.length) setSelected(list[0].id);
+    try {
+      const list = await listProjects();
+      setProjects(list);
+      if (!selected && list.length) setSelected(list[0].id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
   useEffect(() => {
     refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function create() {
     if (!newName) return;
-    const p = await createProject(newName);
-    setNewName("");
-    await refresh();
-    setSelected(p.id);
+    setError(null);
+    try {
+      const p = await createProject(newName);
+      setNewName("");
+      await refresh();
+      setSelected(p.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -289,6 +300,12 @@ export function ProjectsPanel() {
             Create
           </button>
         </div>
+        {error && (
+          <div style={{ color: "#ffb2a3", fontSize: 12, marginTop: 8 }}>
+            {error}
+            {error.includes("fetch") && " — the server may not be reachable (check it's running on 127.0.0.1:8787)."}
+          </div>
+        )}
       </div>
 
       {selected && (

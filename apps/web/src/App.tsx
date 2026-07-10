@@ -11,6 +11,7 @@ import { MemoryPanel } from "./MemoryPanel";
 import { JobsPanel } from "./JobsPanel";
 import { MacroPanel } from "./MacroPanel";
 import { RoundTablePanel } from "./RoundTablePanel";
+import { VaultPanel } from "./VaultPanel";
 import "./theme.css";
 
 function SettingsBar() {
@@ -102,7 +103,7 @@ function ChatGrid() {
   );
 }
 
-type Tab = "chat" | "roundtable" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory" | "jobs" | "macros";
+type Tab = "chat" | "roundtable" | "stack" | "breaks" | "termlens" | "projects" | "board" | "cost" | "memory" | "jobs" | "macros" | "vault";
 
 const TAB_LABELS: Record<Tab, string> = {
   chat: "Chat",
@@ -116,6 +117,7 @@ const TAB_LABELS: Record<Tab, string> = {
   memory: "Memory",
   jobs: "Jobs",
   macros: "Macros",
+  vault: "Vault",
 };
 
 export default function App() {
@@ -143,6 +145,7 @@ export default function App() {
         {tab === "memory" && <MemoryPanel />}
         {tab === "jobs" && <JobsPanel />}
         {tab === "macros" && <MacroPanel />}
+        {tab === "vault" && <VaultPanel />}
       </div>
     </div>
   );

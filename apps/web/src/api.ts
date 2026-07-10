@@ -306,36 +306,44 @@ export async function runCli(projectId: string, cmd: string, args: string[], cwd
 
 // ---- Board of Directors ----
 
-export interface BoardSeat {
+export interface BoardAgent {
   adapterId: string;
   model: string;
-  personaId?: string;
-  systemPrompt?: string;
-  label?: string;
 }
 
-export interface BoardResult {
+export interface BoardRunResult {
   threadId: string;
-  board: any[];
-  reviews: any[];
-  verdict: string;
-  nextStep: string | null;
-  /** Aliases kept for backward compatibility. */
-  seats: any[];
-  synthesis: string;
+  advisors: { roleKey: string; label: string; adapterId: string; model: string; ok: boolean; content: string }[];
+  reviews: { reviewerIndex: number; adapterId: string; model: string; ok: boolean; content: string }[];
+  clarifyingQuestions: string[];
 }
 
+export interface BoardVerdictResult {
+  threadId: string;
+  report: string;
+  verdict: string;
+  steps: { title: string; microActions: string[] }[];
+}
+
+/** Phase 1–3: advisors → peer review → clarifying questions. */
 export async function runBoard(
-  paneId: string,
   prompt: string,
-  seats: BoardSeat[],
-  chair: { adapterId: string; model: string },
-  peerReview = false,
-): Promise<BoardResult> {
-  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ paneId, prompt, seats, chair, peerReview }) });
+  advisors: BoardAgent[],
+  reviewers: BoardAgent[],
+  counsel: BoardAgent,
+): Promise<BoardRunResult> {
+  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ prompt, advisors, reviewers, counsel }) });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "board run failed");
-  return data as BoardResult;
+  return data as BoardRunResult;
+}
+
+/** Phase 4: report + single verdict + next 3 micro-action steps. */
+export async function runBoardVerdict(threadId: string, answers: string): Promise<BoardVerdictResult> {
+  const res = await request("/api/board/verdict", { method: "POST", body: JSON.stringify({ threadId, answers }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "board verdict failed");
+  return data as BoardVerdictResult;
 }
 
 // ---- Goals / PM ----
@@ -367,7 +375,9 @@ export async function setStepStatus(stepId: string, status: string) {
 
 export async function getCostSummary(days = 7): Promise<any> {
   const res = await request(`/api/cost/summary?days=${days}`);
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? `cost summary failed (${res.status})`);
+  return data;
 }
 
 // ---- Memory query ----
