@@ -32,10 +32,23 @@ export function startListening(onResult: (transcript: string) => void, onEnd: ()
   return () => recognition.stop();
 }
 
-export function speak(text: string): void {
+export interface SpeakOptions {
+  /** Preferred system voice name, if available. */
+  voiceName?: string;
+  rate?: number;
+  pitch?: number;
+}
+
+export function speak(text: string, opts: SpeakOptions = {}): void {
   if (!isSpeechSynthesisSupported() || !text.trim()) return;
   window.speechSynthesis.cancel(); // don't overlap with a previous utterance
   const utterance = new SpeechSynthesisUtterance(text);
+  if (opts.rate != null) utterance.rate = opts.rate;
+  if (opts.pitch != null) utterance.pitch = opts.pitch;
+  if (opts.voiceName) {
+    const match = window.speechSynthesis.getVoices().find((v) => v.name === opts.voiceName);
+    if (match) utterance.voice = match;
+  }
   window.speechSynthesis.speak(utterance);
 }
 

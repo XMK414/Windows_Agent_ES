@@ -89,6 +89,12 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
       floating `CostWidget`, draggable, resizable (CSS resize), adjustable
       transparency, collapsible, app-wide with a show/hide toggle.
 
-## Phase 6 — Break Timer (deferred, needs research)
+## Phase 6 — Break Timer
 
-- [ ] Expand each section from the reference photos into actionable help.
+- [x] Each break option is now a guided routine (the "further help"): a sequence
+      of timed, spoken cues walked through step-by-step with a countdown,
+      progress bar, and pause/skip/restart. Content library covers breathing
+      (Box, Calm Down, Reset, Ease Off), neck (Release, Soothe, Stretch Out),
+      full-body scan (Quick→Full), and meditation (Short/Long). The Wren/Sage
+      voice guides drive speech synthesis (with an on/off toggle). Routine
+      content is unit-tested (web vitest).
