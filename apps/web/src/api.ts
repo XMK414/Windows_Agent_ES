@@ -364,6 +364,38 @@ export async function deleteContextSet(id: string) {
   return request(`/api/context-sets/${id}`, { method: "DELETE" });
 }
 
+// ---- MCP connectors ----
+
+export interface McpConnector {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  locked: number;
+  routed: number;
+}
+
+export async function listMcpConnectors(): Promise<McpConnector[]> {
+  const res = await request("/api/mcp/connectors");
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to list connectors");
+  return data.connectors ?? [];
+}
+
+export async function updateMcpConnector(id: string, patch: { locked?: boolean; routed?: boolean }): Promise<McpConnector> {
+  const res = await request(`/api/mcp/connectors/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update connector");
+  return data.connector;
+}
+
+export async function addMcpConnector(name: string): Promise<McpConnector> {
+  const res = await request("/api/mcp/connectors", { method: "POST", body: JSON.stringify({ name }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to add connector");
+  return data.connector;
+}
+
 export async function listProjectFiles(projectId: string): Promise<any[]> {
   const res = await request(`/api/projects/${projectId}/files`);
   return (await res.json()).files ?? [];

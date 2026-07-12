@@ -187,6 +187,17 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mcp_connectors (
+  id TEXT PRIMARY KEY,        -- slug
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,         -- e.g. Web
+  status TEXT NOT NULL,       -- e.g. Connected
+  locked INTEGER NOT NULL DEFAULT 1,  -- pinned/approved in the routing set
+  routed INTEGER NOT NULL DEFAULT 1,  -- active in routing
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS cost_ledger (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,

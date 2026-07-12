@@ -60,7 +60,11 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
       in Round Table / Board / Chat. `buildRestricted` flag enforced — the
       server refuses it on the Macros and Jobs (product-building) surfaces.
       Tests cover the flag.
-- [ ] MCP connectors: list, lock-in, and route. Depends on connector inventory.
+- [x] MCP connectors: a managed registry (mcp_connectors table + store, seeded
+      from the user's 15 connectors) with per-connector Locked / Routed flags —
+      unlocking forces routing off, and a connector can't be routed unless it's
+      locked in. Table UI in the Vault with add-your-own. Store unit-tested
+      (seed idempotency, edit-preserving reseed, lock/route invariant).
 
 ## Phase 3 — Projects (save + detail)
 
@@ -82,9 +86,8 @@ Rebuild to the canonical flow (supersedes the earlier 5-seat version):
 
 ## Phase 5 — Cost analytics (live usage + floating widget)
 
-- [ ] Live account usage pulls for Anthropic + Google (in addition to the local
-      API-cost ledger) on the main Cost screen. (Deferred — needs per-provider
-      console OAuth/scraping; not exposed via the API key.)
+- [x] ~~Live account usage pulls for Anthropic + Google~~ — skipped by the user;
+      the local API-cost ledger + floating widget cover the need.
 - [x] A small always-visible cost readout on any screen that makes calls —
       floating `CostWidget`, draggable, resizable (CSS resize), adjustable
       transparency, collapsible, app-wide with a show/hide toggle.

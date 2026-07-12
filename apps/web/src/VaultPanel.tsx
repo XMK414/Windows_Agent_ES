@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { setSecret, getStatus } from "./api";
+import { setSecret, getStatus, listMcpConnectors, updateMcpConnector, addMcpConnector, type McpConnector } from "./api";
 import { checkVaultPassword, sha256Hex } from "./passwordPolicy";
 
 const PW_HASH_KEY = "waes_vault_pw_hash";
@@ -194,13 +194,95 @@ export function VaultPanel() {
 
       <ChatGptOAuthSection configured={Boolean(status?.chatgptOauthConfigured)} onSaved={refreshStatus} />
 
-      <div className="glass-card">
-        <h3>MCP connectors</h3>
-        <p style={{ fontSize: 12, opacity: 0.6, marginTop: -4 }}>
-          Connectors are locked in and routed server-side. Inventory + per-connector routing UI is the next slice.
-        </p>
-      </div>
+      <McpConnectorsSection />
     </div>
+  );
+}
+
+function McpConnectorsSection() {
+  const [connectors, setConnectors] = useState<McpConnector[]>([]);
+  const [newName, setNewName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      setConnectors(await listMcpConnectors());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function toggle(c: McpConnector, patch: { locked?: boolean; routed?: boolean }) {
+    try {
+      const updated = await updateMcpConnector(c.id, patch);
+      setConnectors((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function add() {
+    if (!newName.trim()) return;
+    try {
+      await addMcpConnector(newName.trim());
+      setNewName("");
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const routedCount = connectors.filter((c) => c.routed).length;
+
+  return (
+    <div className="glass-card">
+      <h3>MCP connectors</h3>
+      <p style={{ fontSize: 12, opacity: 0.6, marginTop: -4 }}>
+        Locked-in and routed inventory. <b>Locked</b> keeps a connector pinned in the approved set; <b>Routed</b> makes it
+        active for use. Unlocking turns routing off. {routedCount} of {connectors.length} routed.
+      </p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "4px 10px", alignItems: "center", fontSize: 13 }}>
+        <div style={{ fontSize: 11, opacity: 0.6 }}>Connector</div>
+        <div style={{ fontSize: 11, opacity: 0.6 }}>Status</div>
+        <div style={{ fontSize: 11, opacity: 0.6, textAlign: "center" }}>Locked</div>
+        <div style={{ fontSize: 11, opacity: 0.6, textAlign: "center" }}>Routed</div>
+        {connectors.map((c) => (
+          <FragmentRow key={c.id} c={c} onToggle={toggle} />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <input className="waes-input" placeholder="Add a connector by name" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ flex: 1 }} />
+        <button className="waes-button" onClick={add}>
+          Add
+        </button>
+      </div>
+      {error && <div style={{ color: "#ffb2a3", fontSize: 12, marginTop: 8 }}>{error}</div>}
+    </div>
+  );
+}
+
+function FragmentRow({ c, onToggle }: { c: McpConnector; onToggle: (c: McpConnector, patch: { locked?: boolean; routed?: boolean }) => void }) {
+  return (
+    <>
+      <div style={{ borderTop: "1px solid var(--waes-glass-border)", paddingTop: 6 }}>
+        {c.name} <span style={{ opacity: 0.5, fontSize: 11 }}>· {c.type}</span>
+      </div>
+      <div style={{ borderTop: "1px solid var(--waes-glass-border)", paddingTop: 6 }}>
+        <span className="waes-badge">{c.status}</span>
+      </div>
+      <div style={{ borderTop: "1px solid var(--waes-glass-border)", paddingTop: 6, textAlign: "center" }}>
+        <input type="checkbox" checked={Boolean(c.locked)} onChange={(e) => onToggle(c, { locked: e.target.checked })} />
+      </div>
+      <div style={{ borderTop: "1px solid var(--waes-glass-border)", paddingTop: 6, textAlign: "center" }}>
+        <input type="checkbox" checked={Boolean(c.routed)} disabled={!c.locked} onChange={(e) => onToggle(c, { routed: e.target.checked })} />
+      </div>
+    </>
   );
 }
 

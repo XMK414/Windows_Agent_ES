@@ -29,6 +29,7 @@ import { registerWebSessionRoutes } from "./routes/web-session.js";
 import { registerMacroRoutes } from "./routes/macros.js";
 import { registerRoundtableRoutes } from "./routes/roundtable.js";
 import { registerContextSetRoutes } from "./routes/context-sets.js";
+import { registerMcpRoutes } from "./routes/mcp.js";
 import { buildProviderRegistry } from "./adapters/registry.js";
 import { FileLibraryIndex } from "./library/index.js";
 import { ContextResolver } from "./injection/context-resolver.js";
@@ -119,6 +120,7 @@ registerTermLensRoutes(app, { db, providers, contextResolver, vaultDir: VAULT_DI
 registerMacroRoutes(app, { db, providers, library: libraryIndex, contextResolver, auditLog });
 registerRoundtableRoutes(app, { db, providers, contextResolver, auditLog });
 registerContextSetRoutes(app, { db });
+registerMcpRoutes(app, { db, auditLog });
 registerToolRoutes(app, { db });
 registerStackRoutes(app, { db });
 registerBreakRoutes(app, { db });
