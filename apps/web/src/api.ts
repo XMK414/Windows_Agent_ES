@@ -246,9 +246,15 @@ export async function getScan(id: string): Promise<any> {
 
 // ---- Projects / Files / Artifacts / CLI ----
 
+export const PROJECT_PHASES = ["DISCOVERY", "ARCHITECTURE", "CONSTRUCTION", "VERIFY_QUALITY", "SHIP"] as const;
+export type ProjectPhase = (typeof PROJECT_PHASES)[number];
+
 export interface Project {
   id: string;
   name: string;
+  description?: string | null;
+  phase?: ProjectPhase;
+  started_at?: string | null;
   created_at: string;
 }
 
@@ -261,7 +267,133 @@ export async function createProject(name: string): Promise<Project> {
 
 export async function listProjects(): Promise<Project[]> {
   const res = await request("/api/projects");
-  return (await res.json()).projects ?? [];
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to list projects");
+  return data.projects ?? [];
+}
+
+export async function getProject(id: string): Promise<Project> {
+  const res = await request(`/api/projects/${id}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to load project");
+  return data.project;
+}
+
+export async function updateProject(id: string, patch: { description?: string; phase?: ProjectPhase }) {
+  const res = await request(`/api/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update project");
+  return data;
+}
+
+export interface ProjectLogEntry {
+  id: string;
+  entry: string;
+  created_at: string;
+}
+
+export async function listProjectLog(id: string): Promise<ProjectLogEntry[]> {
+  const res = await request(`/api/projects/${id}/log`);
+  return (await res.json()).entries ?? [];
+}
+
+export async function addProjectLog(id: string, entry: string) {
+  const res = await request(`/api/projects/${id}/log`, { method: "POST", body: JSON.stringify({ entry }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to add log entry");
+  return data;
+}
+
+// ---- Context sets (Macros) ----
+
+export interface ContextSet {
+  id: string;
+  project_id: string | null;
+  name: string;
+  prompt: string;
+  rules: string;
+  restraints: string;
+  plan_md: string;
+  notes: string;
+  active: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContextSetTemplate {
+  name: string;
+  prompt: string;
+  rules: string;
+  restraints: string;
+  plan_md: string;
+  notes: string;
+}
+
+export async function listContextSets(projectId?: string): Promise<ContextSet[]> {
+  const res = await request(`/api/context-sets${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ""}`);
+  return (await res.json()).sets ?? [];
+}
+
+export async function listContextSetTemplates(): Promise<ContextSetTemplate[]> {
+  const res = await request(`/api/context-sets/templates`);
+  return (await res.json()).templates ?? [];
+}
+
+export async function createContextSet(input: Partial<ContextSet> & { name: string; projectId?: string | null }): Promise<ContextSet> {
+  const res = await request(`/api/context-sets`, { method: "POST", body: JSON.stringify(input) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to create set");
+  return data.set;
+}
+
+export async function updateContextSet(id: string, patch: Partial<ContextSet>): Promise<ContextSet> {
+  const res = await request(`/api/context-sets/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update set");
+  return data.set;
+}
+
+export async function activateContextSet(id: string): Promise<ContextSet> {
+  const res = await request(`/api/context-sets/${id}/activate`, { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to activate set");
+  return data.set;
+}
+
+export async function deleteContextSet(id: string) {
+  return request(`/api/context-sets/${id}`, { method: "DELETE" });
+}
+
+// ---- MCP connectors ----
+
+export interface McpConnector {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  locked: number;
+  routed: number;
+}
+
+export async function listMcpConnectors(): Promise<McpConnector[]> {
+  const res = await request("/api/mcp/connectors");
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to list connectors");
+  return data.connectors ?? [];
+}
+
+export async function updateMcpConnector(id: string, patch: { locked?: boolean; routed?: boolean }): Promise<McpConnector> {
+  const res = await request(`/api/mcp/connectors/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to update connector");
+  return data.connector;
+}
+
+export async function addMcpConnector(name: string): Promise<McpConnector> {
+  const res = await request("/api/mcp/connectors", { method: "POST", body: JSON.stringify({ name }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "failed to add connector");
+  return data.connector;
 }
 
 export async function listProjectFiles(projectId: string): Promise<any[]> {
@@ -306,17 +438,44 @@ export async function runCli(projectId: string, cmd: string, args: string[], cwd
 
 // ---- Board of Directors ----
 
-export interface BoardSeat {
+export interface BoardAgent {
   adapterId: string;
   model: string;
-  personaId?: string;
 }
 
-export async function runBoard(paneId: string, prompt: string, seats: BoardSeat[], chair: { adapterId: string; model: string }) {
-  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ paneId, prompt, seats, chair }) });
+export interface BoardRunResult {
+  threadId: string;
+  advisors: { roleKey: string; label: string; adapterId: string; model: string; ok: boolean; content: string }[];
+  reviews: { reviewerIndex: number; adapterId: string; model: string; ok: boolean; content: string }[];
+  clarifyingQuestions: string[];
+}
+
+export interface BoardVerdictResult {
+  threadId: string;
+  report: string;
+  verdict: string;
+  steps: { title: string; microActions: string[] }[];
+}
+
+/** Phase 1–3: advisors → peer review → clarifying questions. */
+export async function runBoard(
+  prompt: string,
+  advisors: BoardAgent[],
+  reviewers: BoardAgent[],
+  counsel: BoardAgent,
+): Promise<BoardRunResult> {
+  const res = await request("/api/board/run", { method: "POST", body: JSON.stringify({ prompt, advisors, reviewers, counsel }) });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? "board run failed");
-  return data as { threadId: string; seats: any[]; synthesis: string };
+  return data as BoardRunResult;
+}
+
+/** Phase 4: report + single verdict + next 3 micro-action steps. */
+export async function runBoardVerdict(threadId: string, answers: string): Promise<BoardVerdictResult> {
+  const res = await request("/api/board/verdict", { method: "POST", body: JSON.stringify({ threadId, answers }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "board verdict failed");
+  return data as BoardVerdictResult;
 }
 
 // ---- Goals / PM ----
@@ -348,7 +507,9 @@ export async function setStepStatus(stepId: string, status: string) {
 
 export async function getCostSummary(days = 7): Promise<any> {
   const res = await request(`/api/cost/summary?days=${days}`);
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? `cost summary failed (${res.status})`);
+  return data;
 }
 
 // ---- Memory query ----

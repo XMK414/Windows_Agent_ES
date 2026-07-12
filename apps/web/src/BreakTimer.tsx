@@ -1,83 +1,93 @@
 import { useEffect, useRef, useState } from "react";
 import { getBreakSettings, setBreakSettings, type BreakSettings } from "./api";
-
-type ExerciseCategory = "breathing" | "neck" | "full-body-scan" | "meditation";
-
-const EXERCISES: Record<ExerciseCategory, { label: string; options: { label: string; minutes?: number }[] }> = {
-  breathing: { label: "Breathing", options: [{ label: "Calm Down" }, { label: "Reset" }, { label: "Box Breath" }, { label: "Ease Off" }] },
-  neck: { label: "Neck Exercise", options: [{ label: "Release" }, { label: "Soothe" }, { label: "Stretch Out" }] },
-  "full-body-scan": {
-    label: "Full Body Scan",
-    options: [
-      { label: "Quick Scan", minutes: 6 },
-      { label: "Top to Bottom", minutes: 10 },
-      { label: "Deep Focus", minutes: 11 },
-      { label: "Full Scan", minutes: 14 },
-    ],
-  },
-  meditation: { label: "Meditation", options: [{ label: "Short Pause", minutes: 4 }, { label: "Long Session", minutes: 13 }] },
-};
+import { ROUTINES, CATEGORY_LABELS, routineDurationMin, type BreakCategory, type Routine } from "./breakContent";
+import { GuidedBreak } from "./GuidedBreak";
+import { isSpeechSynthesisSupported } from "./speech";
 
 function BreakModal({ onDismiss }: { onDismiss: () => void }) {
-  const [category, setCategory] = useState<ExerciseCategory | null>(null);
+  const [category, setCategory] = useState<BreakCategory | null>(null);
+  const [routine, setRoutine] = useState<Routine | null>(null);
   const [voice, setVoice] = useState<"Wren" | "Sage">("Wren");
+  const [voiceOn, setVoiceOn] = useState(isSpeechSynthesisSupported());
 
   return (
     <div className="waes-modal-backdrop" onClick={onDismiss}>
-      <div className="glass-card" style={{ width: 480, maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-        <h3>Time for a break</h3>
-        {!category ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {(Object.keys(EXERCISES) as ExerciseCategory[]).map((key) => (
-              <button key={key} className="waes-button" style={{ padding: "18px 10px" }} onClick={() => setCategory(key)}>
-                {EXERCISES[key].label}
+      <div className="glass-card" style={{ width: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        {routine ? (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+              <b>{CATEGORY_LABELS[routine.category]}</b>
+              <button className="waes-button" onClick={() => setRoutine(null)}>
+                Back
               </button>
-            ))}
-          </div>
+            </div>
+            <GuidedBreak routine={routine} voice={voice} voiceOn={voiceOn} onDone={onDismiss} />
+          </>
+        ) : !category ? (
+          <>
+            <h3>Time for a break</h3>
+            <p style={{ fontSize: 12, opacity: 0.6, marginTop: -4 }}>Pick a category, then a guided routine — I'll walk you through it step by step.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {(Object.keys(ROUTINES) as BreakCategory[]).map((key) => (
+                <button key={key} className="waes-button" style={{ padding: "18px 10px" }} onClick={() => setCategory(key)}>
+                  {CATEGORY_LABELS[key]}
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <b>{EXERCISES[category].label}</b>
+              <b>{CATEGORY_LABELS[category]}</b>
               <button className="waes-button" onClick={() => setCategory(null)}>
                 Back
               </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-              {EXERCISES[category].options.map((opt) => (
-                <button key={opt.label} className="waes-button" style={{ padding: "14px 10px", textAlign: "left" }}>
-                  {opt.label}
-                  {opt.minutes && <div style={{ fontSize: 11, opacity: 0.7 }}>{opt.minutes} minutes</div>}
+            <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+              {ROUTINES[category].map((r) => (
+                <button key={r.label} className="waes-button" style={{ padding: "12px 12px", textAlign: "left" }} onClick={() => setRoutine(r)}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <b>{r.label}</b>
+                    <span style={{ fontSize: 11, opacity: 0.7 }}>{routineDurationMin(r)} min</span>
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{r.summary}</div>
                 </button>
               ))}
             </div>
-            <div style={{ fontSize: 12, marginBottom: 6, opacity: 0.7 }}>Voice Guide</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {(["Wren", "Sage"] as const).map((v) => (
-                <button
-                  key={v}
-                  className="waes-button"
-                  style={{ background: voice === v ? "var(--waes-accent-soft)" : undefined }}
-                  onClick={() => setVoice(v)}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
+            {isSpeechSynthesisSupported() && (
+              <>
+                <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                  <input type="checkbox" checked={voiceOn} onChange={(e) => setVoiceOn(e.target.checked)} />
+                  Voice guide
+                </label>
+                {voiceOn && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(["Wren", "Sage"] as const).map((v) => (
+                      <button key={v} className="waes-button" style={{ background: voice === v ? "var(--waes-accent-soft)" : undefined }} onClick={() => setVoice(v)}>
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
-        <div style={{ marginTop: 16, textAlign: "right" }}>
-          <button className="waes-button" onClick={onDismiss}>
-            Dismiss
-          </button>
-        </div>
+        {!routine && (
+          <div style={{ marginTop: 16, textAlign: "right" }}>
+            <button className="waes-button" onClick={onDismiss}>
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export function BreakTimer() {
-  const [settings, setSettings] = useState<BreakSettings>({ intervalMinutes: 25, enabled: true, exerciseTypes: Object.keys(EXERCISES) });
+  const [settings, setSettings] = useState<BreakSettings>({ intervalMinutes: 25, enabled: true, exerciseTypes: Object.keys(ROUTINES) });
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [saved, setSaved] = useState(false);

@@ -1,31 +1,17 @@
 import { useEffect, useState } from "react";
 import { createThread, sendMessage, saveNote, listLibrary, type InjectionRef, type LibraryListItem } from "./api";
 import { isSpeechRecognitionSupported, isSpeechSynthesisSupported, startListening, speak } from "./speech";
-
-interface ModelOption {
-  id: string;
-  label: string;
-}
-
-const MODELS: Record<string, ModelOption[]> = {
-  "anthropic-api": [
-    { id: "claude-sonnet-5", label: "Claude Sonnet 5" },
-    { id: "claude-opus-4-8", label: "Claude Opus 4.8" },
-    { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5" },
-  ],
-  "google-api": [
-    { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  ],
-};
+import { ModelPicker } from "./ModelPicker";
+import { defaultModelFor } from "./models";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-export function ChatPane({ paneId, provider, label }: { paneId: string; provider: "anthropic-api" | "google-api"; label: string }) {
-  const [model, setModel] = useState(MODELS[provider][0].id);
+export function ChatPane({ paneId, provider, label }: { paneId: string; provider: string; label: string }) {
+  const [adapterId, setAdapterId] = useState(provider);
+  const [model, setModel] = useState(defaultModelFor(provider));
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -60,7 +46,7 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
 
   async function ensureThread(): Promise<string> {
     if (threadId) return threadId;
-    const id = await createThread(paneId, provider, model);
+    const id = await createThread(paneId, adapterId, model);
     setThreadId(id);
     return id;
   }
@@ -154,13 +140,17 @@ export function ChatPane({ paneId, provider, label }: { paneId: string; provider
             Speak replies
           </label>
         )}
-        <select value={model} onChange={(e) => setModel(e.target.value)} disabled={threadId !== null}>
-          {MODELS[provider].map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+          <ModelPicker
+            adapterId={adapterId}
+            model={model}
+            onChange={(patch) => {
+              if (patch.adapterId !== undefined) setAdapterId(patch.adapterId);
+              if (patch.model !== undefined) setModel(patch.model);
+            }}
+            disabled={threadId !== null}
+          />
+        </div>
       </div>
 
       <div onMouseUp={handleHighlightSave} style={{ flex: 1, overflowY: "auto", fontSize: 14 }}>

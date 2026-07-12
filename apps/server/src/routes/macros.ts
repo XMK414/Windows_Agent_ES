@@ -7,6 +7,7 @@ import { estimateCostCents } from "../adapters/pricing.js";
 import { ContextResolver, type InjectionRef } from "../injection/context-resolver.js";
 import type { FileLibraryIndex } from "../library/index.js";
 import type { AuditLog } from "../security/audit-log.js";
+import { isBuildRestricted, BUILD_RESTRICTED_MESSAGE } from "../adapters/build-restriction.js";
 
 /**
  * A macro is "run this saved prompt (plus whatever context you attach)
@@ -31,6 +32,7 @@ export function registerMacroRoutes(
 
     const chatProvider = providers.get(provider);
     if (!chatProvider) return res.status(400).json({ error: `Unknown provider "${provider}"` });
+    if (isBuildRestricted(chatProvider)) return res.status(403).json({ error: BUILD_RESTRICTED_MESSAGE });
 
     const promptItem = library.lookup(promptRef);
     if (!promptItem) return res.status(400).json({ error: `Unknown prompt "${promptRef}"` });

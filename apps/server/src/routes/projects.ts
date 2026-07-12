@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "n
 import path from "node:path";
 import { resolveJailedPath, PathEscapeError } from "../security/path-jail.js";
 import type { AuditLog } from "../security/audit-log.js";
+import { isProjectPhase } from "../projects/phases.js";
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -17,17 +18,58 @@ export function registerProjectRoutes(app: Express, deps: { db: Database.Databas
   }
 
   app.post("/api/projects", (req, res) => {
-    const { name } = req.body as { name: string };
+    const { name, description } = req.body as { name: string; description?: string };
     if (!name) return res.status(400).json({ error: "name required" });
 
     const id = uuid();
+    const now = new Date().toISOString();
     mkdirSync(projectDir(id), { recursive: true });
-    db.prepare(`INSERT INTO projects (id, name, created_at) VALUES (?, ?, ?)`).run(id, name, new Date().toISOString());
+    db.prepare(`INSERT INTO projects (id, name, description, phase, started_at, created_at) VALUES (?, ?, ?, 'DISCOVERY', ?, ?)`).run(
+      id,
+      name,
+      description ?? null,
+      now,
+      now,
+    );
     res.json({ id, name });
   });
 
   app.get("/api/projects", (_req, res) => {
     res.json({ projects: db.prepare(`SELECT * FROM projects ORDER BY created_at DESC`).all() });
+  });
+
+  app.get("/api/projects/:id", (req, res) => {
+    const project = db.prepare(`SELECT * FROM projects WHERE id = ?`).get(req.params.id);
+    if (!project) return res.status(404).json({ error: "not found" });
+    res.json({ project });
+  });
+
+  // Update description and/or phase.
+  app.patch("/api/projects/:id", (req, res) => {
+    const { description, phase } = req.body as { description?: string; phase?: string };
+    if (phase !== undefined && !isProjectPhase(phase)) {
+      return res.status(400).json({ error: "invalid phase" });
+    }
+    const existing = db.prepare(`SELECT id FROM projects WHERE id = ?`).get(req.params.id);
+    if (!existing) return res.status(404).json({ error: "not found" });
+
+    if (description !== undefined) db.prepare(`UPDATE projects SET description = ? WHERE id = ?`).run(description, req.params.id);
+    if (phase !== undefined) db.prepare(`UPDATE projects SET phase = ? WHERE id = ?`).run(phase, req.params.id);
+    res.json({ ok: true });
+  });
+
+  // Work-log: a dated brief of what was done in a session on this project.
+  app.get("/api/projects/:id/log", (req, res) => {
+    const entries = db.prepare(`SELECT id, entry, created_at FROM project_log WHERE project_id = ? ORDER BY created_at DESC`).all(req.params.id);
+    res.json({ entries });
+  });
+
+  app.post("/api/projects/:id/log", (req, res) => {
+    const { entry } = req.body as { entry: string };
+    if (!entry?.trim()) return res.status(400).json({ error: "entry required" });
+    const id = uuid();
+    db.prepare(`INSERT INTO project_log (id, project_id, entry, created_at) VALUES (?, ?, ?, ?)`).run(id, req.params.id, entry.trim(), new Date().toISOString());
+    res.json({ id });
   });
 
   app.get("/api/projects/:id/files", (req, res) => {

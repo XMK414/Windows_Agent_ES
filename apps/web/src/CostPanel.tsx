@@ -4,10 +4,37 @@ import { getCostSummary } from "./api";
 export function CostPanel() {
   const [days, setDays] = useState(7);
   const [summary, setSummary] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setError(null);
+    setSummary(null);
+    getCostSummary(days)
+      .then((data) => {
+        if (data && typeof data === "object" && "total" in data) setSummary(data);
+        else setError("Unexpected response from the server.");
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+  }
 
   useEffect(() => {
-    getCostSummary(days).then(setSummary);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
+
+  if (error)
+    return (
+      <div className="glass-card" style={{ maxWidth: 700 }}>
+        <div style={{ color: "#ffb2a3", fontSize: 13, marginBottom: 8 }}>Couldn't load cost data: {error}</div>
+        <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
+          If this says "Failed to fetch", the server isn't reachable — check it's running and that you opened the app on
+          an allowed origin (127.0.0.1 or localhost).
+        </div>
+        <button className="waes-button" onClick={load}>
+          Retry
+        </button>
+      </div>
+    );
 
   if (!summary) return <div className="glass-card">Loading...</div>;
 

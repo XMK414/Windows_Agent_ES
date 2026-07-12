@@ -1,0 +1,103 @@
+# Windows Agent ES — Upgrade Plan
+
+Tracks the multi-section upgrade requested 2026-07. Each phase lists scope,
+files, and the tests that gate it. Checked items are landed on
+`claude/model-selector-openrouter-qstvma`.
+
+## Phase 0 — Connectivity & reliability (fixes "Failed to fetch" / spinners)
+
+Root cause of "Failed to fetch" when saving a key, projects not saving, and the
+cost dashboard spinning forever: the browser origin didn't match the server's
+single allowed CORS origin, so every call was blocked. Silent spinners hid it.
+
+- [x] CORS allows both `127.0.0.1` and `localhost` on the dev/preview ports,
+      and any extra origins from `WAES_WEB_ORIGINS` (comma-separated).
+- [x] Async route errors return JSON 500 instead of hanging the request
+      (`asyncHandler` wrapper + error middleware).
+- [x] Frontend surfaces fetch failures instead of infinite "Loading…"
+      (Cost dashboard, Projects) with a retry.
+- [x] Tests: CORS allow-list logic; password policy; board orchestration.
+
+## Phase 1 — Board of Directors (10-agent Counsel flow)
+
+Rebuild to the canonical flow (supersedes the earlier 5-seat version):
+
+1. **5 advisor agents**, fixed roles, each pressure-tests differently:
+   - Contrarian — only finds fatal flaws / what kills the project.
+   - First Principles — ignores the question, drills "what are you really
+     doing/selling?" to the smallest clean unit.
+   - Expansionist — the non-obvious upside everyone misses.
+   - Outsider — gets ONLY the raw question, zero history/context.
+   - Executioner — only the exact next actionable step.
+2. Answers are **anonymized + shuffled** and handed to **5 separate peer-review
+   agents** — they see only the answers (no author/role), and validate the
+   logic, writing a review of each.
+3. **Counsel Verdict agent** receives everything (answers, reviews, and each
+   agent's label + role), then **asks the user clarifying questions** (team
+   size, budget, current tools, desired autonomy, time/day, etc.).
+4. After the user answers, the Counsel writes a **clear report**, then one
+   **single clear verdict** and the **only next 3 actionable steps**, each
+   broken into **micro-actions** engineered for quick, big wins.
+
+- [x] Server: `board/counsel.ts` (roles, prompt builders, anonymize/shuffle,
+      step parsing, `runAdvisory` / `runVerdict`) + phased persistence + cost.
+- [x] Routes: `POST /api/board/run` (advisors→reviews→questions),
+      `POST /api/board/verdict` (report + verdict + 3 micro-action steps).
+- [x] Web: two-step Board UI (run → answer questions → verdict), model pickers
+      per agent, provider spread.
+- [x] Tests: role prompts, anonymize/shuffle strips attribution, step parser,
+      full orchestration with mock providers.
+
+## Phase 2 — Vault (full page, password-gated)
+
+- [x] Password gate: min 12 chars, ≥2 each of lower, upper, digit, and special
+      (`!@#$%^&*=+`). Shared policy util with tests.
+- [x] Secret slots for Anthropic, Google, OpenRouter + **blank custom slots**
+      (add-your-own name/value) for keys to be found later.
+- [x] OAuth — ChatGPT via OAuth: `chatgpt-oauth` provider (OpenAI-compatible,
+      configurable endpoint since a ChatGPT session token doesn't authenticate
+      against api.openai.com), stored token + endpoint in the vault, selectable
+      in Round Table / Board / Chat. `buildRestricted` flag enforced — the
+      server refuses it on the Macros and Jobs (product-building) surfaces.
+      Tests cover the flag.
+- [x] MCP connectors: a managed registry (mcp_connectors table + store, seeded
+      from the user's 15 connectors) with per-connector Locked / Routed flags —
+      unlocking forces routing off, and a connector can't be routed unless it's
+      locked in. Table UI in the Vault with add-your-own. Store unit-tested
+      (seed idempotency, edit-preserving reseed, lock/route invariant).
+
+## Phase 3 — Projects (save + detail)
+
+- [x] Project detail view (Overview tab): Description, Date Started, and a
+      work-log (each entry = date + brief of what was done).
+- [x] Phase label per project: Discovery → Architecture → Construction →
+      Verify Quality → Ship.
+- [x] Server: `description`, `phase`, `started_at` columns (+ idempotent
+      migration for existing DBs) + `project_log` table + routes. Tests for
+      phase validation.
+
+## Phase 4 — Macros (templates + per-project swappable sets)
+
+- [x] Context sets: named, swappable bundles of prompt · rules · restraints ·
+      plan.md · notes, scopable to a project with one active at a time, seeded
+      from starter templates (Blank, Product build partner, Research, Content
+      ops). Full CRUD + activate, editor UI, plus the existing saved-prompt
+      runner. Store logic unit-tested with an in-memory DB.
+
+## Phase 5 — Cost analytics (live usage + floating widget)
+
+- [x] ~~Live account usage pulls for Anthropic + Google~~ — skipped by the user;
+      the local API-cost ledger + floating widget cover the need.
+- [x] A small always-visible cost readout on any screen that makes calls —
+      floating `CostWidget`, draggable, resizable (CSS resize), adjustable
+      transparency, collapsible, app-wide with a show/hide toggle.
+
+## Phase 6 — Break Timer
+
+- [x] Each break option is now a guided routine (the "further help"): a sequence
+      of timed, spoken cues walked through step-by-step with a countdown,
+      progress bar, and pause/skip/restart. Content library covers breathing
+      (Box, Calm Down, Reset, Ease Off), neck (Release, Soothe, Stretch Out),
+      full-body scan (Quick→Full), and meditation (Short/Long). The Wren/Sage
+      voice guides drive speech synthesis (with an on/off toggle). Routine
+      content is unit-tested (web vitest).
